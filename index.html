@@ -6,10 +6,10 @@
   <title>Liga VTES México</title>
   <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #121212; color: #e0e0e0; }
-    .container { max-width: 650px; margin: 0 auto; }
+    .container { max-width: 700px; margin: 0 auto; }
     h1 { color: #d32f2f; text-align: center; border-bottom: 2px solid #d32f2f; padding-bottom: 10px; margin-bottom: 15px; }
     
-    /* Pestañas */
+    /* Navigation Tabs */
     .tabs { display: flex; gap: 5px; margin-bottom: 20px; }
     .tab-btn { flex: 1; padding: 12px; background: #1e1e1e; color: #aaa; border: 1px solid #333; border-radius: 6px 6px 0 0; cursor: pointer; font-weight: bold; text-align: center; }
     .tab-btn.active { background: #b71c1c; color: white; border-color: #b71c1c; }
@@ -17,13 +17,19 @@
     .tab-content.active { display: block; }
 
     .card { background: #1e1e1e; border: 1px solid #333; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    h2 { margin-top: 0; color: #ef5350; font-size: 1.1rem; }
-    input[type="text"], input[type="number"] { padding: 8px; border-radius: 4px; border: 1px solid #444; background: #2a2a2a; color: white; font-size: 0.95rem; }
+    h2 { margin-top: 0; color: #ef5350; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center; }
+    
+    input[type="text"], input[type="number"], select { padding: 8px; border-radius: 4px; border: 1px solid #444; background: #2a2a2a; color: white; font-size: 0.95rem; }
     input[type="text"] { width: calc(100% - 20px); margin-bottom: 10px; }
     input[type="number"] { width: 60px; text-align: center; }
+    select { width: 100%; margin-bottom: 10px; }
     
     button { width: 100%; padding: 12px; background: #b71c1c; color: white; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; margin-top: 5px; }
     button:hover { background: #e53935; }
+    button.secondary { background: #1565c0; }
+    button.secondary:hover { background: #1e88e5; }
+    button.close-btn { background: #d84315; }
+    button.close-btn:hover { background: #f4511e; }
     
     ul { list-style: none; padding: 0; margin: 0; }
     li { background: #2a2a2a; margin-bottom: 8px; padding: 10px 15px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; }
@@ -31,21 +37,25 @@
     input[type="checkbox"] { transform: scale(1.3); cursor: pointer; }
     
     .table-box { background: #2a1515; border-left: 4px solid #d32f2f; padding: 12px; margin-top: 15px; border-radius: 0 4px 4px 0; }
-    .status-badge { font-size: 0.85rem; padding: 3px 8px; border-radius: 12px; }
+    .status-badge { font-size: 0.8rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
     .present { background: #1b5e20; color: #a5d6a7; }
     .absent { background: #424242; color: #bdbdbd; }
+    .badge-open { background: #2e7d32; color: white; }
+    .badge-closed { background: #c62828; color: white; }
     
     .vp-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; background: #1e1e1e; padding: 6px 10px; border-radius: 4px; }
     
-    /* Tabla de Standings */
+    /* Table Styling for Standings */
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95rem; }
     th, td { padding: 10px; text-align: center; border-bottom: 1px solid #333; }
     th { background: #2a2a2a; color: #ef5350; }
     td.player-name { text-align: left; font-weight: bold; }
     tr:nth-child(even) { background: #181818; }
+    
+    .admin-panel { background: #261c1c; border: 1px dashed #d32f2f; padding: 15px; border-radius: 8px; margin-top: 20px; }
   </style>
 
-  <!-- Librerías de Firebase -->
+  <!-- Firebase Compatibility Libraries -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
@@ -54,41 +64,70 @@
   <div class="container">
     <h1>🩸 Liga VTES México</h1>
 
-    <!-- Pestañas Navegación -->
+    <!-- Pestañas Principal -->
     <div class="tabs">
       <div class="tab-btn active" onclick="switchTab('fecha')">📅 Fecha Actual</div>
-      <div class="tab-btn" onclick="switchTab('standings')">🏆 Standings</div>
+      <div class="tab-btn" onclick="switchTab('standings')">🏆 Standings Globales</div>
     </div>
 
     <!-- PESTAÑA 1: FECHA ACTUAL -->
     <div id="tab-fecha" class="tab-content active">
+      
+      <!-- Selector de Fecha / Jornada -->
       <div class="card">
-        <h2>1. Registro de Jugador</h2>
+        <h2>
+          <span>Gestión de Jornada</span>
+          <span id="fechaStatusBadge" class="status-badge badge-open">ABIERTA</span>
+        </h2>
+        <label style="font-size: 0.85rem; color: #aaa;">Selecciona la Fecha activa o anterior:</label>
+        <select id="fechaSelect" onchange="changeFechaContext()">
+          <option value="fecha_01">Fecha 1</option>
+          <option value="fecha_02">Fecha 2</option>
+          <option value="fecha_03">Fecha 3</option>
+          <option value="fecha_04">Fecha 4</option>
+          <option value="fecha_05">Fecha 5</option>
+        </select>
+      </div>
+
+      <!-- 1. Pre-Registro -->
+      <div class="card">
+        <h2>1. Pre-Registro de Jugador</h2>
         <input type="text" id="playerName" placeholder="Nombre o Nick de Archon">
         <button onclick="registerPlayer()">Anotarme a la Fecha</button>
       </div>
 
+      <!-- 2. Pase de Lista -->
       <div class="card">
-        <h2>2. Lista de Inscritos y Pase de Lista</h2>
-        <p style="font-size: 0.8rem; color: #aaa;">Marca la casilla cuando el jugador LLEGUE AL VENUE.</p>
+        <h2>2. Pase de Lista (Venue)</h2>
+        <p style="font-size: 0.8rem; color: #aaa;">Marca la casilla únicamente cuando el jugador LLEGUE FÍSICAMENTE.</p>
         <ul id="playerList"></ul>
       </div>
 
+      <!-- 3. Control del Sorteo -->
       <div class="card">
-        <h2>3. Control del Organizador</h2>
+        <h2>3. Sorteo y Asignación</h2>
         <button onclick="generateTables()" style="background: #2e7d32;">🎲 Sortear Mesas (Solo Presentes)</button>
       </div>
 
+      <!-- 4. Captura y Corrección de Mesas -->
       <div class="card">
-        <h2>4. Mesas y Registro de Resultados (VP)</h2>
-        <div id="tablesOutput"><em>Las mesas aparecerán aquí cuando el organizador realice el sorteo.</em></div>
+        <h2>4. Mesas y Edición de Puntos (VP)</h2>
+        <div id="tablesOutput"><em>Las mesas aparecerán aquí al realizar el sorteo.</em></div>
       </div>
+
+      <!-- 5. Cierre de Fecha -->
+      <div class="card">
+        <h2>5. Finalizar Jornada</h2>
+        <p style="font-size: 0.8rem; color: #aaa;">Al cerrar la fecha, los puntos de las mesas se computarán de forma definitiva en la Tabla General y la fecha no podrá ser modificada directamente.</p>
+        <button id="closeFechaBtn" class="close-btn" onclick="cerrarFechaYComputar()">🔒 Cerrar Fecha y Computar Puntos</button>
+      </div>
+
     </div>
 
-    <!-- PESTAÑA 2: STANDINGS -->
+    <!-- PESTAÑA 2: STANDINGS GLOBALES -->
     <div id="tab-standings" class="tab-content">
       <div class="card">
-        <h2>Tabla General de Posiciones</h2>
+        <h2>Tabla General Acumulada</h2>
         <table>
           <thead>
             <tr>
@@ -102,6 +141,22 @@
             <tr><td colspan="4">Cargando datos de la liga...</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Panel de Corrección Excepcional (Admin) -->
+      <div class="admin-panel">
+        <h3 style="margin-top: 0; color: #ef5350; font-size: 1rem;">🛠️ Corrección Manual de Standings (Admin)</h3>
+        <p style="font-size: 0.8rem; color: #aaa;">Ajuste directo de puntos globales en caso de reclamaciones posteriores.</p>
+        
+        <select id="adminPlayerSelect">
+          <option value="">Cargando jugadores...</option>
+        </select>
+        
+        <div style="display: flex; gap: 10px; margin-top: 5px;">
+          <input type="number" id="adminDeltaGW" placeholder="Δ GW" step="1" value="0">
+          <input type="number" id="adminDeltaVP" placeholder="Δ VP" step="0.5" value="0">
+        </div>
+        <button class="secondary" onclick="aplicarCorrecciónManual()" style="margin-top: 10px;">Aplicar Ajuste Manual</button>
       </div>
     </div>
 
@@ -121,6 +176,8 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    let currentFecha = "fecha_01";
+
     function switchTab(tabName) {
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -135,45 +192,72 @@
       }
     }
 
-    db.ref('liga_players').on('value', (snapshot) => {
-      const list = document.getElementById('playerList');
-      list.innerHTML = '';
-      const data = snapshot.val() || {};
-      
-      Object.keys(data).forEach(id => {
-        const player = data[id];
-        const li = document.createElement('li');
-        
-        li.innerHTML = `
-          <label class="checkbox-label">
-            <input type="checkbox" ${player.present ? 'checked' : ''} onchange="togglePresence('${id}', this.checked)">
-            <strong>${player.name}</strong>
-          </label>
-          <span class="status-badge ${player.present ? 'present' : 'absent'}">
-            ${player.present ? 'En venue' : 'Ausente'}
-          </span>
-        `;
-        list.appendChild(li);
-      });
-    });
+    function changeFechaContext() {
+      currentFecha = document.getElementById('fechaSelect').value;
+      loadFechaData();
+    }
 
-    db.ref('current_tables').on('value', (snapshot) => {
-      const tables = snapshot.val();
-      if (!tables) return;
-      renderTables(tables);
-    });
+    function loadFechaData() {
+      db.ref(`fechas/${currentFecha}`).on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        const isClosed = data.estado === "CERRADA";
+        
+        // Actualizar Badge de Estado
+        const badge = document.getElementById('fechaStatusBadge');
+        const closeBtn = document.getElementById('closeFechaBtn');
+        
+        if (isClosed) {
+          badge.textContent = "CERRADA";
+          badge.className = "status-badge badge-closed";
+          closeBtn.disabled = true;
+          closeBtn.style.opacity = "0.5";
+          closeBtn.textContent = "🔒 Fecha Cerrada y Computada";
+        } else {
+          badge.textContent = "ABIERTA";
+          badge.className = "status-badge badge-open";
+          closeBtn.disabled = false;
+          closeBtn.style.opacity = "1";
+          closeBtn.textContent = "🔒 Cerrar Fecha y Computar Puntos";
+        }
+
+        renderTables(data.mesas || [], isClosed);
+      });
+
+      // Cargar lista de inscritos/presencia independientes
+      db.ref(`asistencia/${currentFecha}`).on('value', (snapshot) => {
+        const list = document.getElementById('playerList');
+        list.innerHTML = '';
+        const data = snapshot.val() || {};
+        
+        Object.keys(data).forEach(id => {
+          const player = data[id];
+          const li = document.createElement('li');
+          
+          li.innerHTML = `
+            <label class="checkbox-label">
+              <input type="checkbox" ${player.present ? 'checked' : ''} onchange="togglePresence('${id}', this.checked)">
+              <strong>${player.name}</strong>
+            </label>
+            <span class="status-badge ${player.present ? 'present' : 'absent'}">
+              ${player.present ? 'En venue' : 'Ausente'}
+            </span>
+          `;
+          list.appendChild(li);
+        });
+      });
+    }
 
     function registerPlayer() {
       const input = document.getElementById('playerName');
       const name = input.value.trim();
       if (!name) return alert('Ingresa un nombre.');
 
-      db.ref('liga_players').push({ name: name, present: false });
+      db.ref(`asistencia/${currentFecha}`).push({ name: name, present: false });
       input.value = '';
     }
 
     function togglePresence(id, isPresent) {
-      db.ref('liga_players/' + id).update({ present: isPresent });
+      db.ref(`asistencia/${currentFecha}/${id}`).update({ present: isPresent });
     }
 
     function shuffle(array) {
@@ -185,136 +269,188 @@
     }
 
     function generateTables() {
-      db.ref('liga_players').once('value').then(snapshot => {
-        const data = snapshot.val() || {};
-        let presentPlayers = [];
-        
-        Object.keys(data).forEach(id => {
-          if (data[id].present) presentPlayers.push(data[id].name);
+      db.ref(`fechas/${currentFecha}/estado`).once('value').then(snap => {
+        if (snap.val() === "CERRADA") {
+          return alert("No se pueden generar mesas en una fecha CERRADA.");
+        }
+
+        db.ref(`asistencia/${currentFecha}`).once('value').then(snapshot => {
+          const data = snapshot.val() || {};
+          let presentPlayers = [];
+          
+          Object.keys(data).forEach(id => {
+            if (data[id].present) presentPlayers.push(data[id].name);
+          });
+
+          const total = presentPlayers.length;
+          if (total < 4) return alert('Se necesitan al menos 4 jugadores presentes en esta fecha.');
+
+          presentPlayers = shuffle(presentPlayers);
+
+          let numFives = 0, numFours = 0;
+          for (let f = Math.floor(total / 5); f >= 0; f--) {
+            let rem = total - (f * 5);
+            if (rem % 4 === 0) { numFives = f; numFours = rem / 4; break; }
+          }
+
+          if (numFives === 0 && numFours === 0) {
+            return alert(`No se puede dividir equitativamente a ${total} jugadores en mesas de 4 y 5.`);
+          }
+
+          let tables = [];
+          let idx = 0;
+          for (let i = 0; i < numFives; i++) {
+            tables.push({ jugadores: presentPlayers.slice(idx, idx + 5).map(p => ({ name: p, vp: 0 })) });
+            idx += 5;
+          }
+          for (let i = 0; i < numFours; i++) {
+            tables.push({ jugadores: presentPlayers.slice(idx, idx + 4).map(p => ({ name: p, vp: 0 })) });
+            idx += 4;
+          }
+
+          db.ref(`fechas/${currentFecha}/mesas`).set(tables);
+          db.ref(`fechas/${currentFecha}/estado`).set("ABIERTA");
         });
-
-        const total = presentPlayers.length;
-        if (total < 4) return alert('Se necesitan al menos 4 jugadores presentes.');
-
-        presentPlayers = shuffle(presentPlayers);
-
-        let numFives = 0, numFours = 0;
-        for (let f = Math.floor(total / 5); f >= 0; f--) {
-          let rem = total - (f * 5);
-          if (rem % 4 === 0) { numFives = f; numFours = rem / 4; break; }
-        }
-
-        if (numFives === 0 && numFours === 0) {
-          return alert(`No se puede dividir equitativamente a ${total} jugadores en mesas de 4 y 5.`);
-        }
-
-        let tables = [];
-        let idx = 0;
-        for (let i = 0; i < numFives; i++) { tables.push(presentPlayers.slice(idx, idx + 5)); idx += 5; }
-        for (let i = 0; i < numFours; i++) { tables.push(presentPlayers.slice(idx, idx + 4)); idx += 4; }
-
-        db.ref('current_tables').set(tables);
       });
     }
 
-    function renderTables(tables) {
+    function renderTables(tables, isClosed) {
       const output = document.getElementById('tablesOutput');
       output.innerHTML = '';
 
-      tables.forEach((table, tIndex) => {
+      if (tables.length === 0) {
+        output.innerHTML = '<em>No hay mesas sorteadas para esta fecha.</em>';
+        return;
+      }
+
+      tables.forEach((tableObj, tIndex) => {
         const box = document.createElement('div');
         box.className = 'table-box';
-        const maxTableVP = table.length; // 4 o 5 según el número de jugadores en la mesa
+        const table = tableObj.jugadores || [];
+        const maxTableVP = table.length;
         
-        let html = `<strong>Mesa ${tIndex + 1} (${maxTableVP} Jugadores - Máx. ${maxTableVP} VP totales):</strong><br><br>`;
-        table.forEach((player, pIndex) => {
+        let html = `<strong>Mesa ${tIndex + 1} (${maxTableVP} Jugadores - Máx. ${maxTableVP} VP):</strong><br><br>`;
+        table.forEach((p, pIndex) => {
           html += `
             <div class="vp-row">
-              <span><strong>${pIndex + 1}.</strong> ${player}</span>
+              <span><strong>${pIndex + 1}.</strong> ${p.name}</span>
               <div>
                 <label style="font-size: 0.8rem;">VP: </label>
-                <input type="number" step="0.5" min="0" max="${maxTableVP}" value="0" id="vp_${tIndex}_${pIndex}">
+                <input type="number" step="0.5" min="0" max="${maxTableVP}" value="${p.vp || 0}" id="vp_${tIndex}_${pIndex}" ${isClosed ? 'disabled' : ''}>
               </div>
             </div>
           `;
         });
 
-        html += `<button onclick="saveTableResults(${tIndex})" style="background: #1565c0; margin-top: 10px;">💾 Guardar Resultados Mesa ${tIndex + 1}</button>`;
+        if (!isClosed) {
+          html += `<button onclick="saveTableResults(${tIndex})" class="secondary" style="margin-top: 10px;">💾 Guardar / Corregir Mesa ${tIndex + 1}</button>`;
+        }
+        
         box.innerHTML = html;
         output.appendChild(box);
       });
     }
 
+    // Guarda o edita una mesa específica en la fecha actual (Edición en vivo)
     function saveTableResults(tIndex) {
-      db.ref('current_tables/' + tIndex).once('value').then(snapshot => {
-        const table = snapshot.val();
-        const maxAllowedVP = table.length; // Límite de 4 o 5 VPs por mesa
+      db.ref(`fechas/${currentFecha}/mesas/${tIndex}/jugadores`).once('value').then(snapshot => {
+        const players = snapshot.val() || [];
+        const maxAllowedVP = players.length;
         let totalVPInTable = 0;
-        let results = [];
-        let maxVP = -1;
-        let winnersCount = 0;
+        let updatedPlayers = [];
 
-        // Validar la suma total de VPs ingresados
-        for (let pIndex = 0; pIndex < table.length; pIndex++) {
+        for (let pIndex = 0; pIndex < players.length; pIndex++) {
           const vpInput = document.getElementById(`vp_${tIndex}_${pIndex}`);
           const vp = parseFloat(vpInput.value) || 0;
           totalVPInTable += vp;
+          updatedPlayers.push({ name: players[pIndex].name, vp: vp });
         }
 
         if (totalVPInTable > maxAllowedVP) {
-          return alert(`❌ ERROR DE REGLAMENTO:\nLa suma total de VPs en la Mesa ${tIndex + 1} es ${totalVPInTable}. Una mesa de ${maxAllowedVP} jugadores NO puede otorgar más de ${maxAllowedVP} VPs en total.`);
+          return alert(`❌ ERROR DE REGLAMENTO:\nLa suma de VPs en la Mesa ${tIndex + 1} es ${totalVPInTable}. Una mesa de ${maxAllowedVP} jugadores no puede sumar más de ${maxAllowedVP} VPs.`);
         }
 
-        // Si la suma de VPs es válida, proceder a calcular GW y registrar
-        table.forEach((player, pIndex) => {
-          const vpInput = document.getElementById(`vp_${tIndex}_${pIndex}`);
-          const vp = parseFloat(vpInput.value) || 0;
-          
-          if (vp > maxVP) {
-            maxVP = vp;
-            winnersCount = 1;
-          } else if (vp === maxVP && vp > 0) {
-            winnersCount++;
-          }
-
-          results.push({ player: player, vp: vp, gw: 0 });
+        db.ref(`fechas/${currentFecha}/mesas/${tIndex}/jugadores`).set(updatedPlayers).then(() => {
+          alert(`¡Mesa ${tIndex + 1} actualizada con éxito para la ${currentFecha}!`);
         });
-
-        // Asignación de GW si hay mayoría limpia
-        if (maxVP > 0 && winnersCount === 1) {
-          results.forEach(r => {
-            if (r.vp === maxVP) r.gw = 1;
-          });
-        }
-
-        // Guardar o actualizar en Firebase
-        results.forEach(r => {
-          const playerKey = r.player.replace(/[.#$/\[\]]/g, "_");
-          const statsRef = db.ref('standings/' + playerKey);
-
-          statsRef.once('value').then(snap => {
-            const current = snap.val() || { name: r.player, gw: 0, vp: 0 };
-            statsRef.set({
-              name: r.player,
-              gw: current.gw + r.gw,
-              vp: current.vp + r.vp
-            });
-          });
-        });
-
-        alert(`¡Resultados de la Mesa ${tIndex + 1} validados y guardados correctamente!`);
       });
     }
 
-    function loadStandings() {
-      db.ref('standings').once('value').then(snapshot => {
-        const data = snapshot.val() || {};
-        let standingsArray = [];
+    // Cierre de Fecha y Cómputo General
+    function cerrarFechaYComputar() {
+      if (!confirm(`¿Estás seguro de cerrar la ${currentFecha}? Se calcularán los GWs/VPs de todas las mesas y se sumarán a la Tabla General.`)) return;
 
-        Object.keys(data).forEach(key => {
-          standingsArray.push(data[key]);
+      db.ref(`fechas/${currentFecha}`).once('value').then(snapshot => {
+        const fechaData = snapshot.val() || {};
+        const mesas = fechaData.mesas || [];
+
+        if (mesas.length === 0) {
+          return alert("No hay mesas registradas en esta fecha para computar.");
+        }
+
+        let resumenFecha = {}; // { playerKey: { name, vp, gw } }
+
+        mesas.forEach(mesa => {
+          const jugadores = mesa.jugadores || [];
+          let maxVP = -1;
+          let winnersCount = 0;
+
+          jugadores.forEach(j => {
+            if (j.vp > maxVP) { maxVP = j.vp; winnersCount = 1; }
+            else if (j.vp === maxVP && j.vp > 0) { winnersCount++; }
+          });
+
+          jugadores.forEach(j => {
+            const key = j.name.replace(/[.#$/\[\]]/g, "_");
+            if (!resumenFecha[key]) resumenFecha[key] = { name: j.name, vp: 0, gw: 0 };
+            
+            resumenFecha[key].vp += j.vp;
+            if (j.vp === maxVP && maxVP > 0 && winnersCount === 1) {
+              resumenFecha[key].gw += 1;
+            }
+          });
         });
 
+        // Aplicar resultados al Standing Global
+        db.ref('standings_globales').once('value').then(snapStandings => {
+          let standings = snapStandings.val() || {};
+
+          Object.keys(resumenFecha).forEach(key => {
+            const rf = resumenFecha[key];
+            if (!standings[key]) {
+              standings[key] = { name: rf.name, vp: 0, gw: 0 };
+            }
+            standings[key].vp += rf.vp;
+            standings[key].gw += rf.gw;
+          });
+
+          // Guardar Standings y congelar fecha
+          db.ref('standings_globales').set(standings);
+          db.ref(`fechas/${currentFecha}/estado`).set("CERRADA");
+
+          alert(`¡La ${currentFecha} ha sido CERRADA y los puntos han sido computados en el Standing Global!`);
+        });
+      });
+    }
+
+    // Cargar Standings Globales
+    function loadStandings() {
+      db.ref('standings_globales').once('value').then(snapshot => {
+        const data = snapshot.val() || {};
+        let standingsArray = [];
+        const adminSelect = document.getElementById('adminPlayerSelect');
+        adminSelect.innerHTML = '<option value="">Selecciona un jugador para corregir...</option>';
+
+        Object.keys(data).forEach(key => {
+          standingsArray.push({ key: key, ...data[key] });
+          
+          const opt = document.createElement('option');
+          opt.value = key;
+          opt.textContent = data[key].name;
+          adminSelect.appendChild(opt);
+        });
+
+        // Orden VEKN: GW > VP
         standingsArray.sort((a, b) => {
           if (b.gw !== a.gw) return b.gw - a.gw;
           return b.vp - a.vp;
@@ -324,7 +460,7 @@
         tbody.innerHTML = '';
 
         if (standingsArray.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4">No hay resultados registrados aún.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4">No hay resultados computados en el standing global.</td></tr>';
           return;
         }
 
@@ -340,6 +476,31 @@
         });
       });
     }
+
+    // Ajuste Manual de Emergencia (Admin)
+    function aplicarCorrecciónManual() {
+      const key = document.getElementById('adminPlayerSelect').value;
+      const deltaGW = parseInt(document.getElementById('adminDeltaGW').value) || 0;
+      const deltaVP = parseFloat(document.getElementById('adminDeltaVP').value) || 0;
+
+      if (!key) return alert('Selecciona un jugador para aplicar la corrección.');
+      if (deltaGW === 0 && deltaVP === 0) return alert('Ingresa un valor distinto de cero en GW o VP.');
+
+      const playerRef = db.ref(`standings_globales/${key}`);
+      playerRef.once('value').then(snap => {
+        const current = snap.val() || { vp: 0, gw: 0 };
+        const newVP = Math.max(0, current.vp + deltaVP);
+        const newGW = Math.max(0, current.gw + deltaGW);
+
+        playerRef.update({ vp: newVP, gw: newGW }).then(() => {
+          alert('¡Ajuste manual aplicado correctamente!');
+          loadStandings();
+        });
+      });
+    }
+
+    // Inicializar carga de datos de la Fecha 1 al abrir la app
+    loadFechaData();
   </script>
 </body>
 </html>
