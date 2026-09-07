@@ -3,26 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Liga VTES CDMX</title>
+  <title>Liga VTES México</title>
   <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #121212; color: #e0e0e0; }
-    .container { max-width: 600px; margin: 0 auto; }
-    h1 { color: #d32f2f; text-align: center; border-bottom: 2px solid #d32f2f; padding-bottom: 10px; }
+    .container { max-width: 650px; margin: 0 auto; }
+    h1 { color: #d32f2f; text-align: center; border-bottom: 2px solid #d32f2f; padding-bottom: 10px; margin-bottom: 15px; }
+    
+    /* Pestañas */
+    .tabs { display: flex; gap: 5px; margin-bottom: 20px; }
+    .tab-btn { flex: 1; padding: 12px; background: #1e1e1e; color: #aaa; border: 1px solid #333; border-radius: 6px 6px 0 0; cursor: pointer; font-weight: bold; text-align: center; }
+    .tab-btn.active { background: #b71c1c; color: white; border-color: #b71c1c; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
     .card { background: #1e1e1e; border: 1px solid #333; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    h2 { margin-top: 0; color: #ef5350; font-size: 1.2rem; }
-    input[type="text"] { width: calc(100% - 22px); padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #444; background: #2a2a2a; color: white; font-size: 1rem; }
+    h2 { margin-top: 0; color: #ef5350; font-size: 1.1rem; }
+    input[type="text"], input[type="number"] { padding: 8px; border-radius: 4px; border: 1px solid #444; background: #2a2a2a; color: white; font-size: 0.95rem; }
+    input[type="text"] { width: calc(100% - 20px); margin-bottom: 10px; }
+    input[type="number"] { width: 60px; text-align: center; }
+    
     button { width: 100%; padding: 12px; background: #b71c1c; color: white; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; margin-top: 5px; }
     button:hover { background: #e53935; }
-    ul { list-style: none; padding: 0; }
+    
+    ul { list-style: none; padding: 0; margin: 0; }
     li { background: #2a2a2a; margin-bottom: 8px; padding: 10px 15px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; }
     .checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
     input[type="checkbox"] { transform: scale(1.3); cursor: pointer; }
-    .table-box { background: #2a1515; border-left: 4px solid #d32f2f; padding: 12px; margin-top: 10px; border-radius: 0 4px 4px 0; }
+    
+    .table-box { background: #2a1515; border-left: 4px solid #d32f2f; padding: 12px; margin-top: 15px; border-radius: 0 4px 4px 0; }
     .status-badge { font-size: 0.85rem; padding: 3px 8px; border-radius: 12px; }
     .present { background: #1b5e20; color: #a5d6a7; }
     .absent { background: #424242; color: #bdbdbd; }
-    ol { margin: 5px 0 0 20px; padding: 0; }
-    li.seat-item { background: transparent; padding: 2px 0; display: list-item; }
+    
+    .vp-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; background: #1e1e1e; padding: 6px 10px; border-radius: 4px; }
+    
+    /* Tabla de Standings */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95rem; }
+    th, td { padding: 10px; text-align: center; border-bottom: 1px solid #333; }
+    th { background: #2a2a2a; color: #ef5350; }
+    td.player-name { text-align: left; font-weight: bold; }
+    tr:nth-child(even) { background: #181818; }
   </style>
 
   <!-- Librerías de Firebase en modo Compatibilidad -->
@@ -32,37 +52,63 @@
 <body>
 
   <div class="container">
-    <h1>🩸 Liga VTES México / CDMX</h1>
+    <h1>🩸 Liga VTES México</h1>
 
-    <!-- 1. Registro -->
-    <div class="card">
-      <h2>1. Registro de Jugador</h2>
-      <input type="text" id="playerName" placeholder="Tu Nombre o Nick de Archon">
-      <button onclick="registerPlayer()">Anotarme a la Fecha</button>
+    <!-- Pestañas Navegación -->
+    <div class="tabs">
+      <div class="tab-btn active" onclick="switchTab('fecha')">📅 Fecha Actual</div>
+      <div class="tab-btn" onclick="switchTab('standings')">🏆 Standings</div>
     </div>
 
-    <!-- 2. Lista de Confirmados -->
-    <div class="card">
-      <h2>2. Lista de Inscritos y Pase de Lista</h2>
-      <p style="font-size: 0.85rem; color: #aaa;">Marca la casilla cuando el jugador LLEGUE FÍSICAMENTE al venue.</p>
-      <ul id="playerList"></ul>
+    <!-- CONTENIDO PESTAÑA 1: FECHA ACTUAL -->
+    <div id="tab-fecha" class="tab-content active">
+      <div class="card">
+        <h2>1. Registro de Jugador</h2>
+        <input type="text" id="playerName" placeholder="Nombre o Nick de Archon">
+        <button onclick="registerPlayer()">Anotarme a la Fecha</button>
+      </div>
+
+      <div class="card">
+        <h2>2. Lista de Inscritos y Pase de Lista</h2>
+        <p style="font-size: 0.8rem; color: #aaa;">Marca la casilla cuando el jugador LLEGUE AL VENUE.</p>
+        <ul id="playerList"></ul>
+      </div>
+
+      <div class="card">
+        <h2>3. Control del Organizador</h2>
+        <button onclick="generateTables()" style="background: #2e7d32;">🎲 Sortear Mesas (Solo Presentes)</button>
+      </div>
+
+      <div class="card">
+        <h2>4. Mesas y Registro de Resultados (VP)</h2>
+        <div id="tablesOutput"><em>Las mesas aparecerán aquí cuando el organizador realice el sorteo.</em></div>
+      </div>
     </div>
 
-    <!-- 3. Sorteo -->
-    <div class="card">
-      <h2>3. Control del Organizador</h2>
-      <button onclick="generateTables()" style="background: #2e7d32;">🎲 Sortear Mesas (Solo Presentes)</button>
+    <!-- CONTENIDO PESTAÑA 2: STANDINGS -->
+    <div id="tab-standings" class="tab-content">
+      <div class="card">
+        <h2>Tabla General de Posiciones</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Pos</th>
+              <th style="text-align: left;">Jugador</th>
+              <th>GW</th>
+              <th>VP</th>
+            </tr>
+          </thead>
+          <tbody id="standingsTable">
+            <tr><td colspan="4">Cargando datos de la liga...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <!-- 4. Resultados -->
-    <div class="card">
-      <h2>4. Mesas y Orden de Turno (Seating)</h2>
-      <div id="tablesOutput"><em>Las mesas aparecerán aquí cuando el organizador realice el sorteo.</em></div>
-    </div>
   </div>
 
   <script>
-    // Configuración de tu proyecto liga-vtes-mexico
+    // Configuración Firebase liga-vtes-mexico
     const firebaseConfig = {
       apiKey: "AIzaSyDPvUBI7JuIMS5Pt_MMMhQ0qzsuYf3WmPo",
       authDomain: "liga-vtes-mexico.firebaseapp.com",
@@ -73,11 +119,25 @@
       appId: "1:953764362226:web:d76f68f5a017b29ad31d6b"
     };
 
-    // Inicializar Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Escuchar cambios en tiempo real en la lista de jugadores
+    // Control de Pestañas
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+      if (tabName === 'fecha') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('tab-fecha').classList.add('active');
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('tab-standings').classList.add('active');
+        loadStandings();
+      }
+    }
+
+    // Escuchar lista de jugadores inscritos
     db.ref('liga_players').on('value', (snapshot) => {
       const list = document.getElementById('playerList');
       list.innerHTML = '';
@@ -100,28 +160,26 @@
       });
     });
 
-    // Registrar un nuevo jugador
+    // Escuchar mesas actuales generadas
+    db.ref('current_tables').on('value', (snapshot) => {
+      const tables = snapshot.val();
+      if (!tables) return;
+      renderTables(tables);
+    });
+
     function registerPlayer() {
       const input = document.getElementById('playerName');
       const name = input.value.trim();
-      if (!name) return alert('Por favor ingresa un nombre.');
+      if (!name) return alert('Ingresa un nombre.');
 
-      const newRef = db.ref('liga_players').push();
-      newRef.set({
-        name: name,
-        present: false
-      });
+      db.ref('liga_players').push({ name: name, present: false });
       input.value = '';
     }
 
-    // Alternar la casilla de "En venue"
     function togglePresence(id, isPresent) {
-      db.ref('liga_players/' + id).update({
-        present: isPresent
-      });
+      db.ref('liga_players/' + id).update({ present: isPresent });
     }
 
-    // Mezcla aleatoria (Algoritmo Fisher-Yates)
     function shuffle(array) {
       for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -130,71 +188,149 @@
       return array;
     }
 
-    // Generar las mesas con los jugadores presentes
     function generateTables() {
       db.ref('liga_players').once('value').then(snapshot => {
         const data = snapshot.val() || {};
         let presentPlayers = [];
         
         Object.keys(data).forEach(id => {
-          if (data[id].present) {
-            presentPlayers.push(data[id].name);
-          }
+          if (data[id].present) presentPlayers.push(data[id].name);
         });
 
         const total = presentPlayers.length;
-        if (total < 4) {
-          return alert('Se necesitan al menos 4 jugadores presentes en el venue para armar mesas.');
-        }
+        if (total < 4) return alert('Se necesitan al menos 4 jugadores presentes.');
 
-        // Mezclar aleatoriamente el orden de los jugadores presentes
         presentPlayers = shuffle(presentPlayers);
 
-        // Desglose de mesas oficiales (prioriza mesas de 5 y luego mesas de 4)
-        let numFives = 0;
-        let numFours = 0;
-
+        let numFives = 0, numFours = 0;
         for (let f = Math.floor(total / 5); f >= 0; f--) {
           let rem = total - (f * 5);
-          if (rem % 4 === 0) {
-            numFives = f;
-            numFours = rem / 4;
-            break;
-          }
+          if (rem % 4 === 0) { numFives = f; numFours = rem / 4; break; }
         }
 
         if (numFives === 0 && numFours === 0) {
-          return alert(`No se puede dividir equitativamente a ${total} jugadores únicamente en mesas de 4 y 5.`);
+          return alert(`No se puede dividir equitativamente a ${total} jugadores en mesas de 4 y 5.`);
         }
 
         let tables = [];
         let idx = 0;
+        for (let i = 0; i < numFives; i++) { tables.push(presentPlayers.slice(idx, idx + 5)); idx += 5; }
+        for (let i = 0; i < numFours; i++) { tables.push(presentPlayers.slice(idx, idx + 4)); idx += 4; }
 
-        for (let i = 0; i < numFives; i++) {
-          tables.push(presentPlayers.slice(idx, idx + 5));
-          idx += 5;
-        }
-        for (let i = 0; i < numFours; i++) {
-          tables.push(presentPlayers.slice(idx, idx + 4));
-          idx += 4;
-        }
+        // Guardar mesas en Firebase
+        db.ref('current_tables').set(tables);
+      });
+    }
 
-        // Mostrar el resultado del seating en la interfaz
-        const output = document.getElementById('tablesOutput');
-        output.innerHTML = '';
+    function renderTables(tables) {
+      const output = document.getElementById('tablesOutput');
+      output.innerHTML = '';
 
-        tables.forEach((table, tableIndex) => {
-          const box = document.createElement('div');
-          box.className = 'table-box';
+      tables.forEach((table, tIndex) => {
+        const box = document.createElement('div');
+        box.className = 'table-box';
+        
+        let html = `<strong>Mesa ${tIndex + 1} (${table.length} Jugadores):</strong><br><br>`;
+        table.forEach((player, pIndex) => {
+          html += `
+            <div class="vp-row">
+              <span><strong>${pIndex + 1}.</strong> ${player}</span>
+              <div>
+                <label style="font-size: 0.8rem;">VP: </label>
+                <input type="number" step="0.5" min="0" max="5" value="0" id="vp_${tIndex}_${pIndex}">
+              </div>
+            </div>
+          `;
+        });
+
+        html += `<button onclick="saveTableResults(${tIndex})" style="background: #1565c0; margin-top: 10px;">💾 Guardar Resultados Mesa ${tIndex + 1}</button>`;
+        box.innerHTML = html;
+        output.appendChild(box);
+      });
+    }
+
+    // Cálculo oficial de GW y VP de VEKN por mesa
+    function saveTableResults(tIndex) {
+      db.ref('current_tables/' + tIndex).once('value').then(snapshot => {
+        const table = snapshot.val();
+        let results = [];
+        let maxVP = -1;
+        let winnersCount = 0;
+
+        // Leer VPs asignados en la interfaz
+        table.forEach((player, pIndex) => {
+          const vpInput = document.getElementById(`vp_${tIndex}_${pIndex}`);
+          const vp = parseFloat(vpInput.value) || 0;
           
-          let html = `<strong>Mesa ${tableIndex + 1} (${table.length} Jugadores):</strong><ol>`;
-          table.forEach((player) => {
-            html += `<li class="seat-item">${player}</li>`;
+          if (vp > maxVP) {
+            maxVP = vp;
+            winnersCount = 1;
+          } else if (vp === maxVP && vp > 0) {
+            winnersCount++;
+          }
+
+          results.push({ player: player, vp: vp, gw: 0 });
+        });
+
+        // Asignación estricta de GW si hay mayoría limpia
+        if (maxVP > 0 && winnersCount === 1) {
+          results.forEach(r => {
+            if (r.vp === maxVP) r.gw = 1;
           });
-          html += `</ol>`;
-          
-          box.innerHTML = html;
-          output.appendChild(box);
+        }
+
+        // Registrar o actualizar los puntos acumulados en Firebase
+        results.forEach(r => {
+          const playerKey = r.player.replace(/[.#$/\[\]]/g, "_");
+          const statsRef = db.ref('standings/' + playerKey);
+
+          statsRef.once('value').then(snap => {
+            const current = snap.val() || { name: r.player, gw: 0, vp: 0 };
+            statsRef.set({
+              name: r.player,
+              gw: current.gw + r.gw,
+              vp: current.vp + r.vp
+            });
+          });
+        });
+
+        alert(`¡Resultados de la Mesa ${tIndex + 1} guardados correctamente!`);
+      });
+    }
+
+    // Cargar y ordenar la Tabla de Posiciones (Standing)
+    function loadStandings() {
+      db.ref('standings').once('value').then(snapshot => {
+        const data = snapshot.val() || {};
+        let standingsArray = [];
+
+        Object.keys(data).forEach(key => {
+          standingsArray.push(data[key]);
+        });
+
+        // Orden oficial VEKN: Primero por GW (descendente), luego por VP (descendente)
+        standingsArray.sort((a, b) => {
+          if (b.gw !== a.gw) return b.gw - a.gw;
+          return b.vp - a.vp;
+        });
+
+        const tbody = document.getElementById('standingsTable');
+        tbody.innerHTML = '';
+
+        if (standingsArray.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4">No hay resultados registrados aún.</td></tr>';
+          return;
+        }
+
+        standingsArray.forEach((st, idx) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>#${idx + 1}</strong></td>
+            <td class="player-name">${st.name}</td>
+            <td><strong style="color: #66bb6a;">${st.gw}</strong></td>
+            <td><strong style="color: #ef5350;">${st.vp}</strong></td>
+          `;
+          tbody.appendChild(tr);
         });
       });
     }
