@@ -36,6 +36,8 @@
     button.add-btn:hover { background: #388e3c; }
     button.warning-btn { background: #f57c00; }
     button.warning-btn:hover { background: #ff9800; }
+    button.danger-btn { background: #b71c1c; border: 1px solid #ff5252; }
+    button.danger-btn:hover { background: #d32f2f; }
     
     ul { list-style: none; padding: 0; margin: 0; }
     li { background: #2a2a2a; margin-bottom: 8px; padding: 10px 15px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; }
@@ -63,6 +65,7 @@
     .round-selector { display: flex; gap: 10px; margin-bottom: 15px; }
     .round-btn { flex: 1; padding: 8px; background: #2a2a2a; border: 1px solid #444; color: #ccc; cursor: pointer; border-radius: 4px; text-align: center; font-weight: bold; }
     .round-btn.active { background: #1565c0; color: white; border-color: #1e88e5; }
+    .danger-zone { border-top: 1px dashed #ef5350; margin-top: 15px; padding-top: 15px; }
   </style>
 
   <!-- Firebase Compatibility Libraries -->
@@ -96,10 +99,10 @@
         <div id="fechaCalendarioDisplay" style="font-size: 0.85rem; color: #ef5350; margin-bottom: 10px; font-weight: bold;"></div>
 
         <!-- Botón para crear nueva fecha (Protegido por Admin) -->
-        <button class="add-btn" onclick="toggleNuevaFechaForm()">➕ Crear Nueva Fecha de Liga (Admin)</button>
+        <button class="add-btn" onclick="toggleNuevaFechaForm()">➕ Crear / Configurar Fecha de Liga (Admin)</button>
         
         <div id="nuevaFechaForm" class="new-fecha-box" style="display: none;">
-          <h3 style="margin-top: 0; font-size: 0.95rem; color: #aaa;">Nueva Jornada</h3>
+          <h3 style="margin-top: 0; font-size: 0.95rem; color: #aaa;" id="formFechaTitle">Nueva Jornada</h3>
           <label style="font-size: 0.8rem; color: #ccc;">Día exacto de la jornada:</label>
           <input type="date" id="newFechaDate">
           <button class="add-btn" onclick="crearNuevaFecha()">Confirmar y Guardar Fecha</button>
@@ -180,7 +183,7 @@
         <h3 style="margin-top: 0; color: #ef5350; font-size: 1rem;">🔒 Panel de Administrador</h3>
         
         <div id="adminAuthBox">
-          <p style="font-size: 0.8rem; color: #aaa;">Ingresa el PIN de organizador para desbloquear el ajuste manual:</p>
+          <p style="font-size: 0.8rem; color: #aaa;">Ingresa el PIN de organizador para desbloquear las opciones de administrador:</p>
           <input type="password" id="adminPinInput" placeholder="Contraseña de Administrador">
           <button class="secondary" onclick="unlockAdminPanel()">Desbloquear Panel Admin</button>
         </div>
@@ -197,6 +200,13 @@
             <input type="number" id="adminDeltaVP" placeholder="Δ VP" step="0.5" value="0">
           </div>
           <button class="secondary" onclick="aplicarCorreccionManual()" style="margin-top: 10px;">Aplicar Ajuste Manual</button>
+
+          <!-- Zona de Riesgo / Reset Total -->
+          <div class="danger-zone">
+            <h4 style="margin: 0 0 5px 0; color: #ff5252; font-size: 0.9rem;">⚠️ ZONA DE DANGER DE LA LIGA</h4>
+            <p style="font-size: 0.75rem; color: #aaa; margin-bottom: 10px;">Esta acción borrará TODAS las fechas, asistencias, rondas y la tabla general de standings de forma irreversible.</p>
+            <button class="danger-btn" onclick="resetTotalLiga()">💥 RESETEAR TODO A 0 (LIGA COMPLETA)</button>
+          </div>
         </div>
       </div>
     </div>
@@ -259,10 +269,12 @@
         catalogoFechasDict = data || {};
 
         if (!data) {
+          const hoy = new Date().toISOString().split('T')[0];
           const fechaInicial = {
-            fecha_01: { numero: 1, nombre: "Fecha 1", fecha_calendario: new Date().toISOString().split('T')[0] }
+            fecha_01: { numero: 1, nombre: "Fecha 1", fecha_calendario: hoy }
           };
           db.ref('catalogo_fechas').set(fechaInicial);
+          db.ref('fechas/fecha_01/estado').set("ABIERTA");
           return;
         }
 
@@ -272,7 +284,7 @@
           const item = data[key];
           const option = document.createElement('option');
           option.value = key;
-          option.textContent = `${item.nombre} (${item.fecha_calendario || 'Sin fecha'})`;
+          option.textContent = `${item.nombre} (${item.fecha_calendario || 'Sin fecha asignada'})`;
           select.appendChild(option);
         });
 
@@ -288,6 +300,10 @@
       if (!checkAdminAuth()) return;
       const form = document.getElementById('nuevaFechaForm');
       form.style.display = form.style.display === 'none' ? 'block' : 'none';
+
+      if (catalogoFechasDict[currentFecha]) {
+        document.getElementById('newFechaDate').value = catalogoFechasDict[currentFecha].fecha_calendario || '';
+      }
     }
 
     function crearNuevaFecha() {
@@ -295,23 +311,33 @@
       const dateInput = document.getElementById('newFechaDate').value;
       if (!dateInput) return alert("Por favor selecciona el día de la jornada.");
 
-      const numFechasExistentes = Object.keys(catalogoFechasDict).length;
-      const nuevoNumero = numFechasExistentes + 1;
-      const keyFecha = `fecha_${nuevoNumero < 10 ? '0' + nuevoNumero : nuevoNumero}`;
+      const keys = Object.keys(catalogoFechasDict);
+      
+      // Si solo existe 1 fecha o el usuario quiere actualizar la fecha actual
+      if (confirm(`¿Deseas guardar la fecha ${dateInput} para la jornada seleccionada?`)) {
+        let keyFecha = currentFecha;
+        
+        // Si la fecha actual ya existe, pero el botón es para añadir una nueva jornada
+        const numFechasExistentes = keys.length;
+        const nuevoNumero = numFechasExistentes + 1;
+        
+        // Crear nueva fecha correlativa
+        keyFecha = `fecha_${nuevoNumero < 10 ? '0' + nuevoNumero : nuevoNumero}`;
 
-      const nuevaData = {
-        numero: nuevoNumero,
-        nombre: `Fecha ${nuevoNumero}`,
-        fecha_calendario: dateInput
-      };
+        const nuevaData = {
+          numero: nuevoNumero,
+          nombre: `Fecha ${nuevoNumero}`,
+          fecha_calendario: dateInput
+        };
 
-      db.ref(`catalogo_fechas/${keyFecha}`).set(nuevaData).then(() => {
-        db.ref(`fechas/${keyFecha}/estado`).set("ABIERTA");
-        currentFecha = keyFecha;
-        document.getElementById('nuevaFechaForm').style.display = 'none';
-        document.getElementById('newFechaDate').value = '';
-        alert(`¡Fecha ${nuevoNumero} creada correctamente!`);
-      });
+        db.ref(`catalogo_fechas/${keyFecha}`).set(nuevaData).then(() => {
+          db.ref(`fechas/${keyFecha}/estado`).set("ABIERTA");
+          currentFecha = keyFecha;
+          document.getElementById('nuevaFechaForm').style.display = 'none';
+          document.getElementById('newFechaDate').value = '';
+          alert(`¡Jornada guardada correctamente!`);
+        });
+      }
     }
 
     function switchTab(tabName) {
@@ -413,7 +439,7 @@
       db.ref(`asistencia/${currentFecha}/${id}`).update({ present: isPresent });
     }
 
-    // Funciones de Reset Limpio
+    // Funciones de Reset Parciales
     function resetPaseDeLista() {
       if (!confirm("¿Deseas desmarcar a todos los jugadores del Pase de Lista de esta fecha?")) return;
       db.ref(`asistencia/${currentFecha}`).once('value').then(snap => {
@@ -431,6 +457,24 @@
       db.ref(`fechas/${currentFecha}/rondas/${currentRonda}`).remove().then(() => {
         alert(`Se han borrado las mesas de la ${rondaNombre}.`);
       });
+    }
+
+    // RESET TOTAL DE LA LIGA (A 0)
+    function resetTotalLiga() {
+      if (!checkAdminAuth()) return;
+      
+      const confirmacion1 = confirm("⚠️ ¿ESTÁS SEGURO DE RESETEAR TODO A 0?\n\nEsta acción borrará todas las fechas, asistencias, mesas de juego y la Tabla General de Standings.");
+      if (!confirmacion1) return;
+
+      const confirmacion2 = prompt("Escribe RESET (en mayúsculas) para confirmar el borrado total de la liga:");
+      if (confirmacion2 === "RESET") {
+        db.ref().remove().then(() => {
+          alert("💥 Se ha reseteado la base de datos completa a 0.");
+          location.reload();
+        });
+      } else {
+        alert("Operación cancelada. No se realizó ningún cambio.");
+      }
     }
 
     function shuffle(array) {
@@ -547,7 +591,6 @@
       });
     }
 
-    // Cierre de Fecha Computando Todas las Rondas de la Jornada
     function cerrarFechaYComputar() {
       const nombreFecha = catalogoFechasDict[currentFecha] ? catalogoFechasDict[currentFecha].nombre : currentFecha;
       if (!confirm(`¿Estás seguro de cerrar la ${nombreFecha}? Se calcularán los GWs/VPs de la Ronda 1 y Ronda 2 y se sumarán a la Tabla General.`)) return;
@@ -562,7 +605,6 @@
 
         let resumenFecha = {};
 
-        // Iterar sobre Ronda 1 y Ronda 2
         Object.keys(rondas).forEach(rondaKey => {
           const mesas = rondas[rondaKey].mesas || [];
           
