@@ -19,10 +19,11 @@
     .card { background: #1e1e1e; border: 1px solid #333; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
     h2 { margin-top: 0; color: #ef5350; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center; }
     
-    input[type="text"], input[type="number"], input[type="date"], select { padding: 8px; border-radius: 4px; border: 1px solid #444; background: #2a2a2a; color: white; font-size: 0.95rem; }
+    input[type="text"], input[type="number"], input[type="date"], input[type="password"], select { padding: 8px; border-radius: 4px; border: 1px solid #444; background: #2a2a2a; color: white; font-size: 0.95rem; }
     input[type="text"] { width: calc(100% - 20px); margin-bottom: 10px; }
     input[type="number"] { width: 60px; text-align: center; }
     input[type="date"] { width: calc(100% - 20px); margin-bottom: 10px; }
+    input[type="password"] { width: calc(100% - 20px); margin-bottom: 10px; }
     select { width: 100%; margin-bottom: 10px; }
     
     button { width: 100%; padding: 12px; background: #b71c1c; color: white; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; margin-top: 5px; }
@@ -33,6 +34,8 @@
     button.close-btn:hover { background: #f4511e; }
     button.add-btn { background: #2e7d32; }
     button.add-btn:hover { background: #388e3c; }
+    button.warning-btn { background: #f57c00; }
+    button.warning-btn:hover { background: #ff9800; }
     
     ul { list-style: none; padding: 0; margin: 0; }
     li { background: #2a2a2a; margin-bottom: 8px; padding: 10px 15px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; }
@@ -56,6 +59,10 @@
     
     .admin-panel { background: #261c1c; border: 1px dashed #d32f2f; padding: 15px; border-radius: 8px; margin-top: 20px; }
     .new-fecha-box { background: #212121; border: 1px solid #444; padding: 10px; border-radius: 6px; margin-top: 10px; }
+    
+    .round-selector { display: flex; gap: 10px; margin-bottom: 15px; }
+    .round-btn { flex: 1; padding: 8px; background: #2a2a2a; border: 1px solid #444; color: #ccc; cursor: pointer; border-radius: 4px; text-align: center; font-weight: bold; }
+    .round-btn.active { background: #1565c0; color: white; border-color: #1e88e5; }
   </style>
 
   <!-- Firebase Compatibility Libraries -->
@@ -88,14 +95,23 @@
         </select>
         <div id="fechaCalendarioDisplay" style="font-size: 0.85rem; color: #ef5350; margin-bottom: 10px; font-weight: bold;"></div>
 
-        <!-- Botón y formulario para crear nueva fecha -->
-        <button class="add-btn" onclick="toggleNuevaFechaForm()">➕ Crear Nueva Fecha de Liga</button>
+        <!-- Botón para crear nueva fecha (Protegido por Admin) -->
+        <button class="add-btn" onclick="toggleNuevaFechaForm()">➕ Crear Nueva Fecha de Liga (Admin)</button>
         
         <div id="nuevaFechaForm" class="new-fecha-box" style="display: none;">
           <h3 style="margin-top: 0; font-size: 0.95rem; color: #aaa;">Nueva Jornada</h3>
           <label style="font-size: 0.8rem; color: #ccc;">Día exacto de la jornada:</label>
           <input type="date" id="newFechaDate">
           <button class="add-btn" onclick="crearNuevaFecha()">Confirmar y Guardar Fecha</button>
+        </div>
+      </div>
+
+      <!-- Selector de Ronda dentro de la Fecha -->
+      <div class="card">
+        <h2>Selección de Ronda</h2>
+        <div class="round-selector">
+          <div id="ronda1Btn" class="round-btn active" onclick="switchRonda('ronda_1')">Ronda 1</div>
+          <div id="ronda2Btn" class="round-btn" onclick="switchRonda('ronda_2')">Ronda 2</div>
         </div>
       </div>
 
@@ -108,15 +124,21 @@
 
       <!-- 2. Pase de Lista -->
       <div class="card">
-        <h2>2. Pase de Lista (Venue)</h2>
+        <h2>
+          <span>2. Pase de Lista (Venue)</span>
+          <button class="warning-btn" onclick="resetPaseDeLista()" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">🧹 Reset Pase de Lista</button>
+        </h2>
         <p style="font-size: 0.8rem; color: #aaa;">Marca la casilla únicamente cuando el jugador LLEGUE FÍSICAMENTE.</p>
         <ul id="playerList"></ul>
       </div>
 
       <!-- 3. Control del Sorteo -->
       <div class="card">
-        <h2>3. Sorteo y Asignación</h2>
-        <button onclick="generateTables()" style="background: #2e7d32;">🎲 Sortear Mesas (Solo Presentes)</button>
+        <h2>
+          <span>3. Sorteo y Asignación</span>
+          <button class="warning-btn" onclick="resetRondaActual()" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">🧹 Limpiar Mesas de esta Ronda</button>
+        </h2>
+        <button onclick="generateTables()" style="background: #2e7d32;">🎲 Sortear Mesas (<span id="rondaLabelText">Ronda 1</span>)</button>
       </div>
 
       <!-- 4. Captura y Corrección de Mesas -->
@@ -127,9 +149,9 @@
 
       <!-- 5. Cierre de Fecha -->
       <div class="card">
-        <h2>5. Finalizar Jornada</h2>
-        <p style="font-size: 0.8rem; color: #aaa;">Al cerrar la fecha, los puntos de las mesas se computarán de forma definitiva en la Tabla General.</p>
-        <button id="closeFechaBtn" class="close-btn" onclick="cerrarFechaYComputar()">🔒 Cerrar Fecha y Computar Puntos</button>
+        <h2>5. Finalizar Jornada Completa</h2>
+        <p style="font-size: 0.8rem; color: #aaa;">Al cerrar la fecha, los puntos acumulados de TODAS las rondas jugadas en esta fecha se computarán de forma definitiva en la Tabla General.</p>
+        <button id="closeFechaBtn" class="close-btn" onclick="cerrarFechaYComputar()">🔒 Cerrar Fecha (Computar R1 + R2)</button>
       </div>
 
     </div>
@@ -153,20 +175,29 @@
         </table>
       </div>
 
-      <!-- Panel de Corrección Excepcional (Admin) -->
+      <!-- Panel de Corrección Excepcional (Protegido por Admin) -->
       <div class="admin-panel">
-        <h3 style="margin-top: 0; color: #ef5350; font-size: 1rem;">🛠️ Corrección Manual de Standings (Admin)</h3>
-        <p style="font-size: 0.8rem; color: #aaa;">Ajuste directo de puntos globales en caso de reclamaciones posteriores.</p>
+        <h3 style="margin-top: 0; color: #ef5350; font-size: 1rem;">🔒 Panel de Administrador</h3>
         
-        <select id="adminPlayerSelect">
-          <option value="">Cargando jugadores...</option>
-        </select>
-        
-        <div style="display: flex; gap: 10px; margin-top: 5px;">
-          <input type="number" id="adminDeltaGW" placeholder="Δ GW" step="1" value="0">
-          <input type="number" id="adminDeltaVP" placeholder="Δ VP" step="0.5" value="0">
+        <div id="adminAuthBox">
+          <p style="font-size: 0.8rem; color: #aaa;">Ingresa el PIN de organizador para desbloquear el ajuste manual:</p>
+          <input type="password" id="adminPinInput" placeholder="Contraseña de Administrador">
+          <button class="secondary" onclick="unlockAdminPanel()">Desbloquear Panel Admin</button>
         </div>
-        <button class="secondary" onclick="aplicarCorreccionManual()" style="margin-top: 10px;">Aplicar Ajuste Manual</button>
+
+        <div id="adminControlsBox" style="display: none;">
+          <p style="font-size: 0.8rem; color: #66bb6a; font-weight: bold;">✔ Acceso concedido como Administrador</p>
+          <label style="font-size: 0.8rem; color: #aaa;">Ajuste directo de puntos globales:</label>
+          <select id="adminPlayerSelect">
+            <option value="">Cargando jugadores...</option>
+          </select>
+          
+          <div style="display: flex; gap: 10px; margin-top: 5px;">
+            <input type="number" id="adminDeltaGW" placeholder="Δ GW" step="1" value="0">
+            <input type="number" id="adminDeltaVP" placeholder="Δ VP" step="0.5" value="0">
+          </div>
+          <button class="secondary" onclick="aplicarCorreccionManual()" style="margin-top: 10px;">Aplicar Ajuste Manual</button>
+        </div>
       </div>
     </div>
 
@@ -186,10 +217,40 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // CONTRASEÑA DE ADMINISTRADOR (Cámbiala aquí)
+    const ADMIN_PIN = "vtes2026";
+    let isAdminUnlocked = false;
+
     let currentFecha = "";
+    let currentRonda = "ronda_1";
     let catalogoFechasDict = {};
 
-    // Carga inicial del catálogo de fechas
+    function checkAdminAuth() {
+      if (isAdminUnlocked) return true;
+      const pass = prompt("Ingresa la contraseña de Administrador:");
+      if (pass === ADMIN_PIN) {
+        isAdminUnlocked = true;
+        document.getElementById('adminAuthBox').style.display = 'none';
+        document.getElementById('adminControlsBox').style.display = 'block';
+        return true;
+      } else {
+        alert("Contraseña incorrecta.");
+        return false;
+      }
+    }
+
+    function unlockAdminPanel() {
+      const pin = document.getElementById('adminPinInput').value;
+      if (pin === ADMIN_PIN) {
+        isAdminUnlocked = true;
+        document.getElementById('adminAuthBox').style.display = 'none';
+        document.getElementById('adminControlsBox').style.display = 'block';
+        alert("Panel de administrador desbloqueado.");
+      } else {
+        alert("Contraseña de administrador incorrecta.");
+      }
+    }
+
     function initCatalogoFechas() {
       db.ref('catalogo_fechas').on('value', (snapshot) => {
         const data = snapshot.val();
@@ -198,7 +259,6 @@
         catalogoFechasDict = data || {};
 
         if (!data) {
-          // Si no existe ninguna fecha, crea la Fecha 1 por defecto
           const fechaInicial = {
             fecha_01: { numero: 1, nombre: "Fecha 1", fecha_calendario: new Date().toISOString().split('T')[0] }
           };
@@ -216,7 +276,6 @@
           select.appendChild(option);
         });
 
-        // Mantener la fecha seleccionada o poner la última
         if (!currentFecha || !data[currentFecha]) {
           currentFecha = keys[keys.length - 1];
         }
@@ -226,11 +285,13 @@
     }
 
     function toggleNuevaFechaForm() {
+      if (!checkAdminAuth()) return;
       const form = document.getElementById('nuevaFechaForm');
       form.style.display = form.style.display === 'none' ? 'block' : 'none';
     }
 
     function crearNuevaFecha() {
+      if (!checkAdminAuth()) return;
       const dateInput = document.getElementById('newFechaDate').value;
       if (!dateInput) return alert("Por favor selecciona el día de la jornada.");
 
@@ -267,6 +328,14 @@
       }
     }
 
+    function switchRonda(rondaKey) {
+      currentRonda = rondaKey;
+      document.getElementById('ronda1Btn').classList.toggle('active', rondaKey === 'ronda_1');
+      document.getElementById('ronda2Btn').classList.toggle('active', rondaKey === 'ronda_2');
+      document.getElementById('rondaLabelText').textContent = rondaKey === 'ronda_1' ? 'Ronda 1' : 'Ronda 2';
+      loadFechaData();
+    }
+
     function changeFechaContext() {
       currentFecha = document.getElementById('fechaSelect').value;
       if (!currentFecha) return;
@@ -300,10 +369,12 @@
           badge.className = "status-badge badge-open";
           closeBtn.disabled = false;
           closeBtn.style.opacity = "1";
-          closeBtn.textContent = "🔒 Cerrar Fecha y Computar Puntos";
+          closeBtn.textContent = "🔒 Cerrar Fecha (Computar R1 + R2)";
         }
 
-        renderTables(data.mesas || [], isClosed);
+        const rondasData = data.rondas || {};
+        const mesasRonda = rondasData[currentRonda] ? rondasData[currentRonda].mesas || [] : [];
+        renderTables(mesasRonda, isClosed);
       });
 
       db.ref(`asistencia/${currentFecha}`).on('value', (snapshot) => {
@@ -340,6 +411,26 @@
 
     function togglePresence(id, isPresent) {
       db.ref(`asistencia/${currentFecha}/${id}`).update({ present: isPresent });
+    }
+
+    // Funciones de Reset Limpio
+    function resetPaseDeLista() {
+      if (!confirm("¿Deseas desmarcar a todos los jugadores del Pase de Lista de esta fecha?")) return;
+      db.ref(`asistencia/${currentFecha}`).once('value').then(snap => {
+        const data = snap.val() || {};
+        Object.keys(data).forEach(id => {
+          db.ref(`asistencia/${currentFecha}/${id}`).update({ present: false });
+        });
+      });
+    }
+
+    function resetRondaActual() {
+      const rondaNombre = currentRonda === 'ronda_1' ? 'Ronda 1' : 'Ronda 2';
+      if (!confirm(`¿Estás seguro de eliminar las mesas de la ${rondaNombre}? Se borrarán los VPs asignados en esta ronda.`)) return;
+
+      db.ref(`fechas/${currentFecha}/rondas/${currentRonda}`).remove().then(() => {
+        alert(`Se han borrado las mesas de la ${rondaNombre}.`);
+      });
     }
 
     function shuffle(array) {
@@ -390,8 +481,7 @@
             idx += 4;
           }
 
-          db.ref(`fechas/${currentFecha}/mesas`).set(tables);
-          db.ref(`fechas/${currentFecha}/estado`).set("ABIERTA");
+          db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas`).set(tables);
         });
       });
     }
@@ -401,7 +491,7 @@
       output.innerHTML = '';
 
       if (tables.length === 0) {
-        output.innerHTML = '<em>No hay mesas sorteadas para esta fecha.</em>';
+        output.innerHTML = `<em>No hay mesas sorteadas para la ${currentRonda === 'ronda_1' ? 'Ronda 1' : 'Ronda 2'}.</em>`;
         return;
       }
 
@@ -434,7 +524,7 @@
     }
 
     function saveTableResults(tIndex) {
-      db.ref(`fechas/${currentFecha}/mesas/${tIndex}/jugadores`).once('value').then(snapshot => {
+      db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas/${tIndex}/jugadores`).once('value').then(snapshot => {
         const players = snapshot.val() || [];
         const maxAllowedVP = players.length;
         let totalVPInTable = 0;
@@ -451,44 +541,50 @@
           return alert(`❌ ERROR DE REGLAMENTO:\nLa suma de VPs en la Mesa ${tIndex + 1} es ${totalVPInTable}. Una mesa de ${maxAllowedVP} jugadores no puede sumar más de ${maxAllowedVP} VPs.`);
         }
 
-        db.ref(`fechas/${currentFecha}/mesas/${tIndex}/jugadores`).set(updatedPlayers).then(() => {
+        db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas/${tIndex}/jugadores`).set(updatedPlayers).then(() => {
           alert(`¡Mesa ${tIndex + 1} actualizada con éxito!`);
         });
       });
     }
 
+    // Cierre de Fecha Computando Todas las Rondas de la Jornada
     function cerrarFechaYComputar() {
       const nombreFecha = catalogoFechasDict[currentFecha] ? catalogoFechasDict[currentFecha].nombre : currentFecha;
-      if (!confirm(`¿Estás seguro de cerrar la ${nombreFecha}? Se calcularán los GWs/VPs de todas las mesas y se sumarán a la Tabla General.`)) return;
+      if (!confirm(`¿Estás seguro de cerrar la ${nombreFecha}? Se calcularán los GWs/VPs de la Ronda 1 y Ronda 2 y se sumarán a la Tabla General.`)) return;
 
       db.ref(`fechas/${currentFecha}`).once('value').then(snapshot => {
         const fechaData = snapshot.val() || {};
-        const mesas = fechaData.mesas || [];
+        const rondas = fechaData.rondas || {};
 
-        if (mesas.length === 0) {
-          return alert("No hay mesas registradas en esta fecha para computar.");
+        if (Object.keys(rondas).length === 0) {
+          return alert("No hay rondas registradas en esta fecha para computar.");
         }
 
         let resumenFecha = {};
 
-        mesas.forEach(mesa => {
-          const jugadores = mesa.jugadores || [];
-          let maxVP = -1;
-          let winnersCount = 0;
+        // Iterar sobre Ronda 1 y Ronda 2
+        Object.keys(rondas).forEach(rondaKey => {
+          const mesas = rondas[rondaKey].mesas || [];
+          
+          mesas.forEach(mesa => {
+            const jugadores = mesa.jugadores || [];
+            let maxVP = -1;
+            let winnersCount = 0;
 
-          jugadores.forEach(j => {
-            if (j.vp > maxVP) { maxVP = j.vp; winnersCount = 1; }
-            else if (j.vp === maxVP && j.vp > 0) { winnersCount++; }
-          });
+            jugadores.forEach(j => {
+              if (j.vp > maxVP) { maxVP = j.vp; winnersCount = 1; }
+              else if (j.vp === maxVP && j.vp > 0) { winnersCount++; }
+            });
 
-          jugadores.forEach(j => {
-            const key = j.name.replace(/[.#$/\[\]]/g, "_");
-            if (!resumenFecha[key]) resumenFecha[key] = { name: j.name, vp: 0, gw: 0 };
-            
-            resumenFecha[key].vp += j.vp;
-            if (j.vp === maxVP && maxVP > 0 && winnersCount === 1) {
-              resumenFecha[key].gw += 1;
-            }
+            jugadores.forEach(j => {
+              const key = j.name.replace(/[.#$/\[\]]/g, "_");
+              if (!resumenFecha[key]) resumenFecha[key] = { name: j.name, vp: 0, gw: 0 };
+              
+              resumenFecha[key].vp += j.vp;
+              if (j.vp === maxVP && maxVP > 0 && winnersCount === 1) {
+                resumenFecha[key].gw += 1;
+              }
+            });
           });
         });
 
@@ -507,7 +603,7 @@
           db.ref('standings_globales').set(standings);
           db.ref(`fechas/${currentFecha}/estado`).set("CERRADA");
 
-          alert(`¡La ${nombreFecha} ha sido CERRADA y los puntos han sido computados en el Standing Global!`);
+          alert(`¡La ${nombreFecha} ha sido CERRADA y los puntos acumulados de R1 + R2 fueron computados!`);
         });
       });
     }
@@ -555,6 +651,8 @@
     }
 
     function aplicarCorreccionManual() {
+      if (!checkAdminAuth()) return;
+
       const key = document.getElementById('adminPlayerSelect').value;
       const deltaGW = parseInt(document.getElementById('adminDeltaGW').value) || 0;
       const deltaVP = parseFloat(document.getElementById('adminDeltaVP').value) || 0;
