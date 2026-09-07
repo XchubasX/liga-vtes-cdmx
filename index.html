@@ -66,6 +66,8 @@
     .round-btn { flex: 1; padding: 8px; background: #2a2a2a; border: 1px solid #444; color: #ccc; cursor: pointer; border-radius: 4px; text-align: center; font-weight: bold; }
     .round-btn.active { background: #1565c0; color: white; border-color: #1e88e5; }
     .danger-zone { border-top: 1px dashed #ef5350; margin-top: 15px; padding-top: 15px; }
+    
+    .fecha-control-row { display: flex; gap: 8px; margin-bottom: 10px; }
   </style>
 
   <!-- Firebase Compatibility Libraries -->
@@ -93,19 +95,22 @@
           <span id="fechaStatusBadge" class="status-badge badge-open">ABIERTA</span>
         </h2>
         <label style="font-size: 0.85rem; color: #aaa;">Selecciona la Fecha activa:</label>
-        <select id="fechaSelect" onchange="changeFechaContext()">
-          <!-- Se llena dinámicamente desde Firebase -->
-        </select>
+        <div class="fecha-control-row">
+          <select id="fechaSelect" onchange="changeFechaContext()" style="margin-bottom: 0; flex: 1;"></select>
+          <button class="secondary" onclick="abrirEditarFechaActual()" title="Editar día de esta fecha" style="width: 45px; margin-top: 0; padding: 0;">✏️</button>
+        </div>
         <div id="fechaCalendarioDisplay" style="font-size: 0.85rem; color: #ef5350; margin-bottom: 10px; font-weight: bold;"></div>
 
-        <!-- Botón para crear nueva fecha (Protegido por Admin) -->
-        <button class="add-btn" onclick="toggleNuevaFechaForm()">➕ Crear / Configurar Fecha de Liga (Admin)</button>
+        <!-- Botones de administración de fechas -->
+        <div style="display: flex; gap: 8px;">
+          <button class="add-btn" onclick="toggleNuevaFechaForm('nueva')" style="flex: 1;">➕ Crear Siguiente Fecha</button>
+        </div>
         
         <div id="nuevaFechaForm" class="new-fecha-box" style="display: none;">
           <h3 style="margin-top: 0; font-size: 0.95rem; color: #aaa;" id="formFechaTitle">Nueva Jornada</h3>
-          <label style="font-size: 0.8rem; color: #ccc;">Día exacto de la jornada:</label>
+          <label style="font-size: 0.8rem; color: #ccc;" id="labelFechaInput">Día exacto de la jornada:</label>
           <input type="date" id="newFechaDate">
-          <button class="add-btn" onclick="crearNuevaFecha()">Confirmar y Guardar Fecha</button>
+          <button class="add-btn" id="btnGuardarFechaAccion" onclick="guardarFechaAccion()">Confirmar y Guardar Fecha</button>
         </div>
       </div>
 
@@ -234,6 +239,7 @@
     let currentFecha = "";
     let currentRonda = "ronda_1";
     let catalogoFechasDict = {};
+    let modoFormFecha = "nueva"; // "nueva" o "editar"
 
     function checkAdminAuth() {
       if (isAdminUnlocked) return true;
@@ -296,33 +302,48 @@
       });
     }
 
-    function toggleNuevaFechaForm() {
+    function toggleNuevaFechaForm(modo = "nueva") {
       if (!checkAdminAuth()) return;
+      modoFormFecha = modo;
       const form = document.getElementById('nuevaFechaForm');
+      const titleElem = document.getElementById('formFechaTitle');
+      const btnElem = document.getElementById('btnGuardarFechaAccion');
+      
       form.style.display = form.style.display === 'none' ? 'block' : 'none';
 
-      if (catalogoFechasDict[currentFecha]) {
-        document.getElementById('newFechaDate').value = catalogoFechasDict[currentFecha].fecha_calendario || '';
+      if (form.style.display === 'block') {
+        if (modo === "editar") {
+          titleElem.textContent = `Editar Día - ${catalogoFechasDict[currentFecha] ? catalogoFechasDict[currentFecha].nombre : currentFecha}`;
+          btnElem.textContent = "Guardar Cambios de Fecha";
+          document.getElementById('newFechaDate').value = catalogoFechasDict[currentFecha] ? (catalogoFechasDict[currentFecha].fecha_calendario || '') : '';
+        } else {
+          titleElem.textContent = "Crear Siguiente Jornada";
+          btnElem.textContent = "Confirmar y Guardar Fecha";
+          document.getElementById('newFechaDate').value = '';
+        }
       }
     }
 
-    function crearNuevaFecha() {
+    function abrirEditarFechaActual() {
+      toggleNuevaFechaForm("editar");
+    }
+
+    function guardarFechaAccion() {
       if (!checkAdminAuth()) return;
       const dateInput = document.getElementById('newFechaDate').value;
-      if (!dateInput) return alert("Por favor selecciona el día de la jornada.");
+      if (!dateInput) return alert("Por favor selecciona un día válido.");
 
-      const keys = Object.keys(catalogoFechasDict);
-      
-      // Si solo existe 1 fecha o el usuario quiere actualizar la fecha actual
-      if (confirm(`¿Deseas guardar la fecha ${dateInput} para la jornada seleccionada?`)) {
-        let keyFecha = currentFecha;
-        
-        // Si la fecha actual ya existe, pero el botón es para añadir una nueva jornada
-        const numFechasExistentes = keys.length;
-        const nuevoNumero = numFechasExistentes + 1;
-        
+      if (modoFormFecha === "editar") {
+        // Actualizar fecha actual seleccionada
+        db.ref(`catalogo_fechas/${currentFecha}/fecha_calendario`).set(dateInput).then(() => {
+          document.getElementById('nuevaFechaForm').style.display = 'none';
+          alert("¡Día de jornada actualizado con éxito!");
+        });
+      } else {
         // Crear nueva fecha correlativa
-        keyFecha = `fecha_${nuevoNumero < 10 ? '0' + nuevoNumero : nuevoNumero}`;
+        const keys = Object.keys(catalogoFechasDict);
+        const nuevoNumero = keys.length + 1;
+        const keyFecha = `fecha_${nuevoNumero < 10 ? '0' + nuevoNumero : nuevoNumero}`;
 
         const nuevaData = {
           numero: nuevoNumero,
@@ -335,7 +356,7 @@
           currentFecha = keyFecha;
           document.getElementById('nuevaFechaForm').style.display = 'none';
           document.getElementById('newFechaDate').value = '';
-          alert(`¡Jornada guardada correctamente!`);
+          alert(`¡${nuevaData.nombre} creada correctamente!`);
         });
       }
     }
@@ -369,6 +390,12 @@
       const infoFecha = catalogoFechasDict[currentFecha];
       if (infoFecha) {
         document.getElementById('fechaCalendarioDisplay').textContent = `📅 Día de juego: ${infoFecha.fecha_calendario || 'No asignado'}`;
+      }
+
+      // Si el formulario de edición está abierto, actualizar su contexto visual
+      if (document.getElementById('nuevaFechaForm').style.display === 'block' && modoFormFecha === 'editar') {
+        document.getElementById('formFechaTitle').textContent = `Editar Día - ${infoFecha ? infoFecha.nombre : currentFecha}`;
+        document.getElementById('newFechaDate').value = infoFecha ? (infoFecha.fecha_calendario || '') : '';
       }
 
       loadFechaData();
@@ -439,7 +466,6 @@
       db.ref(`asistencia/${currentFecha}/${id}`).update({ present: isPresent });
     }
 
-    // Funciones de Reset Parciales
     function resetPaseDeLista() {
       if (!confirm("¿Deseas desmarcar a todos los jugadores del Pase de Lista de esta fecha?")) return;
       db.ref(`asistencia/${currentFecha}`).once('value').then(snap => {
@@ -459,7 +485,6 @@
       });
     }
 
-    // RESET TOTAL DE LA LIGA (A 0)
     function resetTotalLiga() {
       if (!checkAdminAuth()) return;
       
