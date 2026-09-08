@@ -215,7 +215,11 @@
         </div>
 
         <div id="adminControlsBox" style="display: none;">
-          <p style="font-size: 0.8rem; color: #66bb6a; font-weight: bold;">✔ Acceso concedido como Administrador</p>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <p style="font-size: 0.8rem; color: #66bb6a; font-weight: bold; margin: 0;">✔ Acceso concedido como Administrador</p>
+            <button class="warning-btn" onclick="lockAdminPanel()" style="width: auto; padding: 4px 10px; font-size: 0.75rem; margin-top: 0;">🔒 Bloquear Panel</button>
+          </div>
+          
           <label style="font-size: 0.8rem; color: #aaa;">Ajuste directo de puntos globales:</label>
           <select id="adminPlayerSelect">
             <option value="">Cargando jugadores...</option>
@@ -229,7 +233,7 @@
 
           <!-- Zona de Riesgo / Reset Total -->
           <div class="danger-zone">
-            <h4 style="margin: 0 0 5px 0; color: #ff5252; font-size: 0.9rem;">⚠️ ZONA DE DANGER DE LA LIGA</h4>
+            <h4 style="margin: 0 0 5px 0; color: #ff5252; font-size: 0.95rem;">⚠️ ZONA DE PELIGRO DE LA LIGA</h4>
             <p style="font-size: 0.75rem; color: #aaa; margin-bottom: 10px;">Esta acción borrará TODAS las fechas, asistencias, rondas y la tabla general de standings de forma irreversible.</p>
             <button class="danger-btn" onclick="resetTotalLiga()">💥 RESETEAR TODO A 0 (LIGA COMPLETA)</button>
           </div>
@@ -317,6 +321,14 @@
       } else {
         alert("Contraseña de administrador incorrecta.");
       }
+    }
+
+    function lockAdminPanel() {
+      isAdminUnlocked = false;
+      document.getElementById('adminControlsBox').style.display = 'none';
+      document.getElementById('adminAuthBox').style.display = 'block';
+      document.getElementById('adminPinInput').value = '';
+      alert("Panel de administrador bloqueado nuevamente.");
     }
 
     function initCatalogoFechas() {
