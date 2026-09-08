@@ -22,7 +22,7 @@
     input[type="text"], input[type="number"], input[type="date"], input[type="password"], select { padding: 8px; border-radius: 4px; border: 1px solid #444; background: #2a2a2a; color: white; font-size: 0.95rem; }
     input[type="text"] { width: calc(100% - 20px); margin-bottom: 10px; }
     input[type="number"] { width: 60px; text-align: center; }
-    input[type="date"] { width: calc(100% - 20px); margin-bottom: 10px; }
+    input[type="date"] { width: calc(100% - 20px); margin-bottom: 10px; color-scheme: dark; }
     input[type="password"] { width: calc(100% - 20px); margin-bottom: 10px; }
     select { width: 100%; margin-bottom: 10px; }
     
@@ -84,7 +84,7 @@
 </head>
 <body>
 
-  <!-- Modal Personalizado de Contraseña para evitar visibilidad en texto plano -->
+  <!-- Modal Personalizado de Contraseña -->
   <div id="passwordModal" class="modal-overlay">
     <div class="modal-box">
       <h3>🔒 Autorización Requerida</h3>
@@ -263,6 +263,14 @@
     let modoFormFecha = "nueva";
     let passwordModalCallback = null;
 
+    // Función auxiliar para formatear de AAAA-MM-DD a DD/MM/AAAA
+    function formatearFechaDDMMAAAA(fechaISO) {
+      if (!fechaISO) return 'Sin fecha asignada';
+      const partes = fechaISO.split('-');
+      if (partes.length !== 3) return fechaISO;
+      return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+
     function promptPassword(message, callback) {
       document.getElementById('modalPromptText').textContent = message || "Ingresa la contraseña de Administrador:";
       document.getElementById('modalPasswordInput').value = "";
@@ -334,7 +342,8 @@
           const item = data[key];
           const option = document.createElement('option');
           option.value = key;
-          option.textContent = `${item.nombre} (${item.fecha_calendario || 'Sin fecha asignada'})`;
+          const fechaFormateada = formatearFechaDDMMAAAA(item.fecha_calendario);
+          option.textContent = `${item.nombre} (${fechaFormateada})`;
           select.appendChild(option);
         });
 
@@ -435,7 +444,8 @@
 
       const infoFecha = catalogoFechasDict[currentFecha];
       if (infoFecha) {
-        document.getElementById('fechaCalendarioDisplay').textContent = `📅 Día de juego: ${infoFecha.fecha_calendario || 'No asignado'}`;
+        const fechaFormateada = formatearFechaDDMMAAAA(infoFecha.fecha_calendario);
+        document.getElementById('fechaCalendarioDisplay').textContent = `📅 Día de juego: ${fechaFormateada}`;
       }
 
       if (document.getElementById('nuevaFechaForm').style.display === 'block' && modoFormFecha === 'editar') {
@@ -515,7 +525,7 @@
       checkAdminAuth(() => {
         db.ref(`asistencia/${currentFecha}/${id}`).update({ present: isPresent });
       }, () => {
-        loadFechaData(); // Revertir visualmente si cancela
+        loadFechaData();
       });
     }
 
@@ -789,7 +799,7 @@
 
     function aplicarCorreccionManual() {
       checkAdminAuth(() => {
-        const key = document.getElementById('adminPlayerSelect').value;
+        const key = document.getElementById('adminPlayerSelect'].value;
         const deltaGW = parseInt(document.getElementById('adminDeltaGW').value) || 0;
         const deltaVP = parseFloat(document.getElementById('adminDeltaVP').value) || 0;
 
