@@ -475,8 +475,8 @@
         } else {
           badge.textContent = "ABIERTA";
           badge.className = "status-badge badge-open";
-          closeBtn.disabled = !isAdminUnlocked;
-          closeBtn.style.opacity = isAdminUnlocked ? "1" : "0.5";
+          closeBtn.disabled = false;
+          closeBtn.style.opacity = "1";
           closeBtn.textContent = "🔒 Cerrar Fecha (Computar R1 + R2)";
         }
 
@@ -494,11 +494,9 @@
           const player = data[id];
           const li = document.createElement('li');
           
-          const disabledAttr = isAdminUnlocked ? '' : 'disabled title="Requiere contraseña de Administrador"';
-          
           li.innerHTML = `
-            <label class="checkbox-label" style="${isAdminUnlocked ? '' : 'cursor: not-allowed; opacity: 0.8;'}">
-              <input type="checkbox" ${player.present ? 'checked' : ''} ${disabledAttr} onchange="togglePresence('${id}', this.checked)">
+            <label class="checkbox-label">
+              <input type="checkbox" ${player.present ? 'checked' : ''} onchange="togglePresence('${id}', this.checked)">
               <strong>${player.name}</strong>
             </label>
             <span class="status-badge ${player.present ? 'present' : 'absent'}">
@@ -522,11 +520,7 @@
     }
 
     function togglePresence(id, isPresent) {
-      checkAdminAuth(() => {
-        db.ref(`asistencia/${currentFecha}/${id}`).update({ present: isPresent });
-      }, () => {
-        loadFechaData();
-      });
+      db.ref(`asistencia/${currentFecha}/${id}`).update({ present: isPresent });
     }
 
     function resetPaseDeLista() {
@@ -644,7 +638,7 @@
         
         let html = `<strong>Mesa ${tIndex + 1} (${maxTableVP} Jugadores - Máx. ${maxTableVP} VP):</strong><br><br>`;
         table.forEach((p, pIndex) => {
-          const inputDisabled = (!isAdminUnlocked || isClosed) ? 'disabled title="Requiere contraseña de Administrador"' : '';
+          const inputDisabled = isClosed ? 'disabled title="Fecha cerrada"' : '';
 
           html += `
             <div class="vp-row">
@@ -657,10 +651,8 @@
           `;
         });
 
-        if (!isClosed && isAdminUnlocked) {
+        if (!isClosed) {
           html += `<button onclick="saveTableResults(${tIndex})" class="secondary" style="margin-top: 10px;">💾 Guardar / Corregir Mesa ${tIndex + 1}</button>`;
-        } else if (!isClosed && !isAdminUnlocked) {
-          html += `<p style="font-size: 0.75rem; color: #ef5350; margin-top: 8px; text-align: right;">🔒 Desbloquea el panel de Admin para modificar VPs</p>`;
         }
         
         box.innerHTML = html;
@@ -669,27 +661,25 @@
     }
 
     function saveTableResults(tIndex) {
-      checkAdminAuth(() => {
-        db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas/${tIndex}/jugadores`).once('value').then(snapshot => {
-          const players = snapshot.val() || [];
-          const maxAllowedVP = players.length;
-          let totalVPInTable = 0;
-          let updatedPlayers = [];
+      db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas/${tIndex}/jugadores`).once('value').then(snapshot => {
+        const players = snapshot.val() || [];
+        const maxAllowedVP = players.length;
+        let totalVPInTable = 0;
+        let updatedPlayers = [];
 
-          for (let pIndex = 0; pIndex < players.length; pIndex++) {
-            const vpInput = document.getElementById(`vp_${tIndex}_${pIndex}`);
-            const vp = parseFloat(vpInput.value) || 0;
-            totalVPInTable += vp;
-            updatedPlayers.push({ name: players[pIndex].name, vp: vp });
-          }
+        for (let pIndex = 0; pIndex < players.length; pIndex++) {
+          const vpInput = document.getElementById(`vp_${tIndex}_${pIndex}`);
+          const vp = parseFloat(vpInput.value) || 0;
+          totalVPInTable += vp;
+          updatedPlayers.push({ name: players[pIndex].name, vp: vp });
+        }
 
-          if (totalVPInTable > maxAllowedVP) {
-            return alert(`❌ ERROR DE REGLAMENTO:\nLa suma de VPs en la Mesa ${tIndex + 1} es ${totalVPInTable}. Una mesa de ${maxAllowedVP} jugadores no puede sumar más de ${maxAllowedVP} VPs.`);
-          }
+        if (totalVPInTable > maxAllowedVP) {
+          return alert(`❌ ERROR DE REGLAMENTO:\nLa suma de VPs en la Mesa ${tIndex + 1} es ${totalVPInTable}. Una mesa de ${maxAllowedVP} jugadores no puede sumar más de ${maxAllowedVP} VPs.`);
+        }
 
-          db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas/${tIndex}/jugadores`).set(updatedPlayers).then(() => {
-            alert(`¡Mesa ${tIndex + 1} actualizada con éxito!`);
-          });
+        db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas/${tIndex}/jugadores`).set(updatedPlayers).then(() => {
+          alert(`¡Mesa ${tIndex + 1} actualizada con éxito!`);
         });
       });
     }
@@ -799,7 +789,7 @@
 
     function aplicarCorreccionManual() {
       checkAdminAuth(() => {
-        const key = document.getElementById('adminPlayerSelect'].value;
+        const key = document.getElementById('adminPlayerSelect').value;
         const deltaGW = parseInt(document.getElementById('adminDeltaGW').value) || 0;
         const deltaVP = parseFloat(document.getElementById('adminDeltaVP').value) || 0;
 
@@ -807,7 +797,7 @@
         if (deltaGW === 0 && deltaVP === 0) return alert('Ingresa un valor distinto de cero en GW o VP.');
 
         const playerRef = db.ref(`standings_globales/${key}`);
-        playerRef.once('value').then(snap => {
+        playerRef.once('value').now = playerRef.once('value').then(snap => {
           const current = snap.val() || { vp: 0, gw: 0 };
           const newVP = Math.max(0, current.vp + deltaVP);
           const newGW = Math.max(0, current.gw + deltaGW);
