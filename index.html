@@ -68,6 +68,14 @@
     .danger-zone { border-top: 1px dashed #ef5350; margin-top: 15px; padding-top: 15px; }
     
     .fecha-control-row { display: flex; gap: 8px; margin-bottom: 10px; }
+
+    /* Custom Password Prompt Modal */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-box { background: #1e1e1e; border: 1px solid #d32f2f; padding: 20px; border-radius: 8px; width: 90%; max-width: 350px; text-align: center; }
+    .modal-box h3 { margin-top: 0; color: #ef5350; }
+    .modal-box input { width: calc(100% - 20px); margin-bottom: 15px; }
+    .modal-actions { display: flex; gap: 10px; }
+    .modal-actions button { margin-top: 0; }
   </style>
 
   <!-- Firebase Compatibility Libraries -->
@@ -75,6 +83,19 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
+
+  <!-- Modal Personalizado de Contraseña para evitar visibilidad en texto plano -->
+  <div id="passwordModal" class="modal-overlay">
+    <div class="modal-box">
+      <h3>🔒 Autorización Requerida</h3>
+      <p id="modalPromptText" style="font-size: 0.85rem; color: #aaa;">Ingresa la contraseña de Administrador:</p>
+      <input type="password" id="modalPasswordInput" placeholder="Contraseña">
+      <div class="modal-actions">
+        <button class="secondary" onclick="closePasswordModal(false)">Cancelar</button>
+        <button class="add-btn" onclick="closePasswordModal(true)">Aceptar</button>
+      </div>
+    </div>
+  </div>
 
   <div class="container">
     <h1>🩸 Liga VTES México</h1>
@@ -126,7 +147,7 @@
       <!-- 1. Pre-Registro (ÚNICA SECCIÓN PÚBLICA LIBRE) -->
       <div class="card" style="border-color: #2e7d32;">
         <h2>1. Pre-Registro de Jugador</h2>
-        <input type="password" id="playerName" placeholder="Nombre o Nick de Archon">
+        <input type="text" id="playerName" placeholder="Nombre o Nick de Archon">
         <button class="add-btn" onclick="registerPlayer()">Anotarme a esta Fecha</button>
       </div>
 
@@ -240,21 +261,41 @@
     let currentRonda = "ronda_1";
     let catalogoFechasDict = {};
     let modoFormFecha = "nueva";
+    let passwordModalCallback = null;
 
-    function checkAdminAuth() {
-      if (isAdminUnlocked) return true;
-      const pass = prompt("Ingresa la contraseña de Administrador:");
-      if (pass === ADMIN_PIN) {
-        isAdminUnlocked = true;
-        document.getElementById('adminAuthBox').style.display = 'none';
-        document.getElementById('adminControlsBox').style.display = 'block';
-        // Recargar datos para habilitar visualmente los elementos admin en la interfaz
-        loadFechaData();
-        return true;
-      } else {
-        alert("Contraseña incorrecta. Esta acción requiere permisos de Administrador.");
-        return false;
+    function promptPassword(message, callback) {
+      document.getElementById('modalPromptText').textContent = message || "Ingresa la contraseña de Administrador:";
+      document.getElementById('modalPasswordInput').value = "";
+      document.getElementById('passwordModal').style.display = 'flex';
+      document.getElementById('modalPasswordInput').focus();
+      passwordModalCallback = callback;
+    }
+
+    function closePasswordModal(confirmed) {
+      const val = document.getElementById('modalPasswordInput').value;
+      document.getElementById('passwordModal').style.display = 'none';
+      if (passwordModalCallback) {
+        passwordModalCallback(confirmed ? val : null);
+        passwordModalCallback = null;
       }
+    }
+
+    function checkAdminAuth(callback) {
+      if (isAdminUnlocked) {
+        if (callback) callback();
+        return;
+      }
+      promptPassword("Ingresa la contraseña de Administrador:", (pass) => {
+        if (pass === ADMIN_PIN) {
+          isAdminUnlocked = true;
+          document.getElementById('adminAuthBox').style.display = 'none';
+          document.getElementById('adminControlsBox').style.display = 'block';
+          loadFechaData();
+          if (callback) callback();
+        } else if (pass !== null) {
+          alert("Contraseña incorrecta. Esta acción requiere permisos de Administrador.");
+        }
+      });
     }
 
     function unlockAdminPanel() {
@@ -306,61 +347,64 @@
     }
 
     function toggleNuevaFechaForm(modo = "nueva") {
-      if (!checkAdminAuth()) return;
-      modoFormFecha = modo;
-      const form = document.getElementById('nuevaFechaForm');
-      const titleElem = document.getElementById('formFechaTitle');
-      const btnElem = document.getElementById('btnGuardarFechaAccion');
-      
-      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+      checkAdminAuth(() => {
+        modoFormFecha = modo;
+        const form = document.getElementById('nuevaFechaForm');
+        const titleElem = document.getElementById('formFechaTitle');
+        const btnElem = document.getElementById('btnGuardarFechaAccion');
+        
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
 
-      if (form.style.display === 'block') {
-        if (modo === "editar") {
-          titleElem.textContent = `Editar Día - ${catalogoFechasDict[currentFecha] ? catalogoFechasDict[currentFecha].nombre : currentFecha}`;
-          btnElem.textContent = "Guardar Cambios de Fecha";
-          document.getElementById('newFechaDate').value = catalogoFechasDict[currentFecha] ? (catalogoFechasDict[currentFecha].fecha_calendario || '') : '';
-        } else {
-          titleElem.textContent = "Crear Siguiente Jornada";
-          btnElem.textContent = "Confirmar y Guardar Fecha";
-          document.getElementById('newFechaDate').value = '';
+        if (form.style.display === 'block') {
+          if (modo === "editar") {
+            titleElem.textContent = `Editar Día - ${catalogoFechasDict[currentFecha] ? catalogoFechasDict[currentFecha].nombre : currentFecha}`;
+            btnElem.textContent = "Guardar Cambios de Fecha";
+            document.getElementById('newFechaDate').value = catalogoFechasDict[currentFecha] ? (catalogoFechasDict[currentFecha].fecha_calendario || '') : '';
+          } else {
+            titleElem.textContent = "Crear Siguiente Jornada";
+            btnElem.textContent = "Confirmar y Guardar Fecha";
+            document.getElementById('newFechaDate').value = '';
+          }
         }
-      }
+      });
     }
 
     function abrirEditarFechaActual() {
-      if (!checkAdminAuth()) return;
-      toggleNuevaFechaForm("editar");
+      checkAdminAuth(() => {
+        toggleNuevaFechaForm("editar");
+      });
     }
 
     function guardarFechaAccion() {
-      if (!checkAdminAuth()) return;
-      const dateInput = document.getElementById('newFechaDate').value;
-      if (!dateInput) return alert("Por favor selecciona un día válido.");
+      checkAdminAuth(() => {
+        const dateInput = document.getElementById('newFechaDate').value;
+        if (!dateInput) return alert("Por favor selecciona un día válido.");
 
-      if (modoFormFecha === "editar") {
-        db.ref(`catalogo_fechas/${currentFecha}/fecha_calendario`).set(dateInput).then(() => {
-          document.getElementById('nuevaFechaForm').style.display = 'none';
-          alert("¡Día de jornada actualizado con éxito!");
-        });
-      } else {
-        const keys = Object.keys(catalogoFechasDict);
-        const nuevoNumero = keys.length + 1;
-        const keyFecha = `fecha_${nuevoNumero < 10 ? '0' + nuevoNumero : nuevoNumero}`;
+        if (modoFormFecha === "editar") {
+          db.ref(`catalogo_fechas/${currentFecha}/fecha_calendario`).set(dateInput).then(() => {
+            document.getElementById('nuevaFechaForm').style.display = 'none';
+            alert("¡Día de jornada actualizado con éxito!");
+          });
+        } else {
+          const keys = Object.keys(catalogoFechasDict);
+          const nuevoNumero = keys.length + 1;
+          const keyFecha = `fecha_${nuevoNumero < 10 ? '0' + nuevoNumero : nuevoNumero}`;
 
-        const nuevaData = {
-          numero: nuevoNumero,
-          nombre: `Fecha ${nuevoNumero}`,
-          fecha_calendario: dateInput
-        };
+          const nuevaData = {
+            numero: nuevoNumero,
+            nombre: `Fecha ${nuevoNumero}`,
+            fecha_calendario: dateInput
+          };
 
-        db.ref(`catalogo_fechas/${keyFecha}`).set(nuevaData).then(() => {
-          db.ref(`fechas/${keyFecha}/estado`).set("ABIERTA");
-          currentFecha = keyFecha;
-          document.getElementById('nuevaFechaForm').style.display = 'none';
-          document.getElementById('newFechaDate').value = '';
-          alert(`¡${nuevaData.nombre} creada correctamente!`);
-        });
-      }
+          db.ref(`catalogo_fechas/${keyFecha}`).set(nuevaData).then(() => {
+            db.ref(`fechas/${keyFecha}/estado`).set("ABIERTA");
+            currentFecha = keyFecha;
+            document.getElementById('nuevaFechaForm').style.display = 'none';
+            document.getElementById('newFechaDate').value = '';
+            alert(`¡${nuevaData.nombre} creada correctamente!`);
+          });
+        }
+      });
     }
 
     function switchTab(tabName) {
@@ -440,7 +484,6 @@
           const player = data[id];
           const li = document.createElement('li');
           
-          // Solo el admin puede modificar los checkboxes de presencia
           const disabledAttr = isAdminUnlocked ? '' : 'disabled title="Requiere contraseña de Administrador"';
           
           li.innerHTML = `
@@ -469,50 +512,52 @@
     }
 
     function togglePresence(id, isPresent) {
-      if (!checkAdminAuth()) {
-        // Revertir visualmente el checkbox si no es admin
-        loadFechaData();
-        return;
-      }
-      db.ref(`asistencia/${currentFecha}/${id}`).update({ present: isPresent });
+      checkAdminAuth(() => {
+        db.ref(`asistencia/${currentFecha}/${id}`).update({ present: isPresent });
+      }, () => {
+        loadFechaData(); // Revertir visualmente si cancela
+      });
     }
 
     function resetPaseDeLista() {
-      if (!checkAdminAuth()) return;
-      if (!confirm("¿Deseas desmarcar a todos los jugadores del Pase de Lista de esta fecha?")) return;
-      db.ref(`asistencia/${currentFecha}`).once('value').then(snap => {
-        const data = snap.val() || {};
-        Object.keys(data).forEach(id => {
-          db.ref(`asistencia/${currentFecha}/${id}`).update({ present: false });
+      checkAdminAuth(() => {
+        if (!confirm("¿Deseas desmarcar a todos los jugadores del Pase de Lista de esta fecha?")) return;
+        db.ref(`asistencia/${currentFecha}`).once('value').then(snap => {
+          const data = snap.val() || {};
+          Object.keys(data).forEach(id => {
+            db.ref(`asistencia/${currentFecha}/${id}`).update({ present: false });
+          });
         });
       });
     }
 
     function resetRondaActual() {
-      if (!checkAdminAuth()) return;
-      const rondaNombre = currentRonda === 'ronda_1' ? 'Ronda 1' : 'Ronda 2';
-      if (!confirm(`¿Estás seguro de eliminar las mesas de la ${rondaNombre}? Se borrarán los VPs asignados en esta ronda.`)) return;
+      checkAdminAuth(() => {
+        const rondaNombre = currentRonda === 'ronda_1' ? 'Ronda 1' : 'Ronda 2';
+        if (!confirm(`¿Estás seguro de eliminar las mesas de la ${rondaNombre}? Se borrarán los VPs asignados en esta ronda.`)) return;
 
-      db.ref(`fechas/${currentFecha}/rondas/${currentRonda}`).remove().then(() => {
-        alert(`Se han borrado las mesas de la ${rondaNombre}.`);
+        db.ref(`fechas/${currentFecha}/rondas/${currentRonda}`).remove().then(() => {
+          alert(`Se han borrado las mesas de la ${rondaNombre}.`);
+        });
       });
     }
 
     function resetTotalLiga() {
-      if (!checkAdminAuth()) return;
-      
-      const confirmacion1 = confirm("⚠️ ¿ESTÁS SEGURO DE RESETEAR TODO A 0?\n\nEsta acción borrará todas las fechas, asistencias, mesas de juego y la Tabla General de Standings.");
-      if (!confirmacion1) return;
+      checkAdminAuth(() => {
+        const confirmacion1 = confirm("⚠️ ¿ESTÁS SEGURO DE RESETEAR TODO A 0?\n\nEsta acción borrará todas las fechas, asistencias, mesas de juego y la Tabla General de Standings.");
+        if (!confirmacion1) return;
 
-      const confirmacion2 = prompt("Escribe RESET (en mayúsculas) para confirmar el borrado total de la liga:");
-      if (confirmacion2 === "RESET") {
-        db.ref().remove().then(() => {
-          alert("💥 Se ha reseteado la base de datos completa a 0.");
-          location.reload();
+        promptPassword("Escribe 'RESET' (en mayúsculas) o la contraseña de Admin para confirmar:", (val) => {
+          if (val === "RESET" || val === ADMIN_PIN) {
+            db.ref().remove().then(() => {
+              alert("💥 Se ha reseteado la base de datos completa a 0.");
+              location.reload();
+            });
+          } else if (val !== null) {
+            alert("Confirmación incorrecta. Operación cancelada.");
+          }
         });
-      } else {
-        alert("Operación cancelada. No se realizó ningún cambio.");
-      }
+      });
     }
 
     function shuffle(array) {
@@ -524,49 +569,49 @@
     }
 
     function generateTables() {
-      if (!checkAdminAuth()) return;
-
-      db.ref(`fechas/${currentFecha}/estado`).once('value').then(snap => {
-        if (snap.val() === "CERRADA") {
-          return alert("No se pueden generar mesas en una fecha CERRADA.");
-        }
-
-        db.ref(`asistencia/${currentFecha}`).once('value').then(snapshot => {
-          const data = snapshot.val() || {};
-          let presentPlayers = [];
-          
-          Object.keys(data).forEach(id => {
-            if (data[id].present) presentPlayers.push(data[id].name);
-          });
-
-          const total = presentPlayers.length;
-          if (total < 4) return alert('Se necesitan al menos 4 jugadores presentes en esta fecha.');
-
-          presentPlayers = shuffle(presentPlayers);
-
-          let numFives = 0, numFours = 0;
-          for (let f = Math.floor(total / 5); f >= 0; f--) {
-            let rem = total - (f * 5);
-            if (rem % 4 === 0) { numFives = f; numFours = rem / 4; break; }
+      checkAdminAuth(() => {
+        db.ref(`fechas/${currentFecha}/estado`).once('value').then(snap => {
+          if (snap.val() === "CERRADA") {
+            return alert("No se pueden generar mesas en una fecha CERRADA.");
           }
 
-          if (numFives === 0 && numFours === 0) {
-            return alert(`No se puede dividir equitativamente a ${total} jugadores en mesas de 4 y 5.`);
-          }
+          db.ref(`asistencia/${currentFecha}`).once('value').then(snapshot => {
+            const data = snapshot.val() || {};
+            let presentPlayers = [];
+            
+            Object.keys(data).forEach(id => {
+              if (data[id].present) presentPlayers.push(data[id].name);
+            });
 
-          let tables = [];
-          let idx = 0;
-          for (let i = 0; i < numFives; i++) {
-            tables.push({ jugadores: presentPlayers.slice(idx, idx + 5).map(p => ({ name: p, vp: 0 })) });
-            idx += 5;
-          }
-          for (let i = 0; i < numFours; i++) {
-            tables.push({ jugadores: presentPlayers.slice(idx, idx + 4).map(p => ({ name: p, vp: 0 })) });
-            idx += 4;
-          }
+            const total = presentPlayers.length;
+            if (total < 4) return alert('Se necesitan al menos 4 jugadores presentes en esta fecha.');
 
-          db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas`).set(tables).then(() => {
-            alert("¡Sorteo de mesas realizado con éxito!");
+            presentPlayers = shuffle(presentPlayers);
+
+            let numFives = 0, numFours = 0;
+            for (let f = Math.floor(total / 5); f >= 0; f--) {
+              let rem = total - (f * 5);
+              if (rem % 4 === 0) { numFives = f; numFours = rem / 4; break; }
+            }
+
+            if (numFives === 0 && numFours === 0) {
+              return alert(`No se puede dividir equitativamente a ${total} jugadores en mesas de 4 y 5.`);
+            }
+
+            let tables = [];
+            let idx = 0;
+            for (let i = 0; i < numFives; i++) {
+              tables.push({ jugadores: presentPlayers.slice(idx, idx + 5).map(p => ({ name: p, vp: 0 })) });
+              idx += 5;
+            }
+            for (let i = 0; i < numFours; i++) {
+              tables.push({ jugadores: presentPlayers.slice(idx, idx + 4).map(p => ({ name: p, vp: 0 })) });
+              idx += 4;
+            }
+
+            db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas`).set(tables).then(() => {
+              alert("¡Sorteo de mesas realizado con éxito!");
+            });
           });
         });
       });
@@ -589,7 +634,6 @@
         
         let html = `<strong>Mesa ${tIndex + 1} (${maxTableVP} Jugadores - Máx. ${maxTableVP} VP):</strong><br><br>`;
         table.forEach((p, pIndex) => {
-          // Bloquear edición de VPs si no es Admin o si está cerrada
           const inputDisabled = (!isAdminUnlocked || isClosed) ? 'disabled title="Requiere contraseña de Administrador"' : '';
 
           html += `
@@ -603,7 +647,6 @@
           `;
         });
 
-        // El botón de guardar mesa también se oculta/deshabilita si no es admin
         if (!isClosed && isAdminUnlocked) {
           html += `<button onclick="saveTableResults(${tIndex})" class="secondary" style="margin-top: 10px;">💾 Guardar / Corregir Mesa ${tIndex + 1}</button>`;
         } else if (!isClosed && !isAdminUnlocked) {
@@ -616,88 +659,88 @@
     }
 
     function saveTableResults(tIndex) {
-      if (!checkAdminAuth()) return;
+      checkAdminAuth(() => {
+        db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas/${tIndex}/jugadores`).once('value').then(snapshot => {
+          const players = snapshot.val() || [];
+          const maxAllowedVP = players.length;
+          let totalVPInTable = 0;
+          let updatedPlayers = [];
 
-      db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas/${tIndex}/jugadores`).once('value').then(snapshot => {
-        const players = snapshot.val() || [];
-        const maxAllowedVP = players.length;
-        let totalVPInTable = 0;
-        let updatedPlayers = [];
+          for (let pIndex = 0; pIndex < players.length; pIndex++) {
+            const vpInput = document.getElementById(`vp_${tIndex}_${pIndex}`);
+            const vp = parseFloat(vpInput.value) || 0;
+            totalVPInTable += vp;
+            updatedPlayers.push({ name: players[pIndex].name, vp: vp });
+          }
 
-        for (let pIndex = 0; pIndex < players.length; pIndex++) {
-          const vpInput = document.getElementById(`vp_${tIndex}_${pIndex}`);
-          const vp = parseFloat(vpInput.value) || 0;
-          totalVPInTable += vp;
-          updatedPlayers.push({ name: players[pIndex].name, vp: vp });
-        }
+          if (totalVPInTable > maxAllowedVP) {
+            return alert(`❌ ERROR DE REGLAMENTO:\nLa suma de VPs en la Mesa ${tIndex + 1} es ${totalVPInTable}. Una mesa de ${maxAllowedVP} jugadores no puede sumar más de ${maxAllowedVP} VPs.`);
+          }
 
-        if (totalVPInTable > maxAllowedVP) {
-          return alert(`❌ ERROR DE REGLAMENTO:\nLa suma de VPs en la Mesa ${tIndex + 1} es ${totalVPInTable}. Una mesa de ${maxAllowedVP} jugadores no puede sumar más de ${maxAllowedVP} VPs.`);
-        }
-
-        db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas/${tIndex}/jugadores`).set(updatedPlayers).then(() => {
-          alert(`¡Mesa ${tIndex + 1} actualizada con éxito!`);
+          db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas/${tIndex}/jugadores`).set(updatedPlayers).then(() => {
+            alert(`¡Mesa ${tIndex + 1} actualizada con éxito!`);
+          });
         });
       });
     }
 
     function cerrarFechaYComputar() {
-      if (!checkAdminAuth()) return;
+      checkAdminAuth(() => {
+        const nombreFecha = catalogoFechasDict[currentFecha] ? catalogoFechasDict[currentFecha].nombre : currentFecha;
+        if (!confirm(`¿Estás seguro de cerrar la ${nombreFecha}? Se calcularán los GWs/VPs de la Ronda 1 y Ronda 2 y se sumarán a la Tabla General.`)) return;
 
-      const nombreFecha = catalogoFechasDict[currentFecha] ? catalogoFechasDict[currentFecha].nombre : currentFecha;
-      if (!confirm(`¿Estás seguro de cerrar la ${nombreFecha}? Se calcularán los GWs/VPs de la Ronda 1 y Ronda 2 y se sumarán a la Tabla General.`)) return;
+        db.ref(`fechas/${currentFecha}`).once('value').then(snapshot => {
+          const fechaData = snapshot.val() || {};
+          const rondas = fechaData.rondas || {};
 
-      db.ref(`fechas/${currentFecha}`).once('value').then(snapshot => {
-        const fechaData = snapshot.val() || {};
-        const rondas = fechaData.rondas || {};
+          if (Object.keys(rondas).length === 0) {
+            return alert("No hay rondas registradas en esta fecha para computar.");
+          }
 
-        if (Object.keys(rondas).length === 0) {
-          return alert("No hay rondas registradas en esta fecha para computar.");
-        }
+          let resumenFecha = {};
 
-        let resumenFecha = {};
+          Object.keys(rondas).forEach(rondaKey => {
+            const mesas = rondas[rondaKey].mesas || [];
+            
+            mesas.forEach(mesa => {
+              const jugadores = mesa.jugadores || [];
+              let maxVP = -1;
+              let winnersCount = 0;
 
-        Object.keys(rondas).forEach(rondaKey => {
-          const mesas = rondas[rondaKey].mesas || [];
-          
-          mesas.forEach(mesa => {
-            const jugadores = mesa.jugadores || [];
-            let maxVP = -1;
-            let winnersCount = 0;
+              jugadores.forEach(j => {
+                if (j.vp > maxVP) { maxVP = j.vp; winnersCount = 1; }
+                else if (j.vp === maxVP && j.vp > 0) { winnersCount++; }
+              });
 
-            jugadores.forEach(j => {
-              if (j.vp > maxVP) { maxVP = j.vp; winnersCount = 1; }
-              else if (j.vp === maxVP && j.vp > 0) { winnersCount++; }
+              jugadores.forEach(j => {
+                const key = j.name.replace(/[.#$/\[\]]/g, "_");
+                if (!resumenFecha[key]) resumenFecha[key] = { name: j.name, vp: 0, gw: 0 };
+                
+                resumenFecha[key].vp += j.vp;
+                if (j.vp === maxVP && maxVP > 0 && winnersCount === 1) {
+                  resumenFecha[key].gw += 1;
+                }
+              });
             });
+          });
 
-            jugadores.forEach(j => {
-              const key = j.name.replace(/[.#$/\[\]]/g, "_");
-              if (!resumenFecha[key]) resumenFecha[key] = { name: j.name, vp: 0, gw: 0 };
-              
-              resumenFecha[key].vp += j.vp;
-              if (j.vp === maxVP && maxVP > 0 && winnersCount === 1) {
-                resumenFecha[key].gw += 1;
+          db.ref('standings_globales').once('value').then(snapStandings => {
+            let standings = snapStandings.val() || {};
+
+            Object.keys(resumenFecha).forEach(key => {
+              const rf = resumenFecha[key];
+              if (!standings[key]) {
+                standings[key] = { name: rf.name, vp: 0, gw: 0 };
               }
+              standings[key].vp += rf.vp;
+              standings[key].gw += rf.gw;
             });
+
+            db.ref('standings_globales').set(standings);
+            db.ref(`fechas/${currentFecha}/estado`).set("CERRADA");
+
+            alert(`¡La ${nombreFecha} ha sido CERRADA y los puntos acumulados de R1 + R2 fueron computados!`);
           });
-        });
-
-        db.ref('standings_globales').once('value').then(snapStandings => {
-          let standings = snapStandings.val() || {};
-
-          Object.keys(resumenFecha).forEach(key => {
-            const rf = resumenFecha[key];
-            if (!standings[key]) {
-              standings[key] = { name: rf.name, vp: 0, gw: 0 };
-            }
-            standings[key].vp += rf.vp;
-            standings[key].gw += rf.gw;
-          });
-
-          db.ref('standings_globales').set(standings);
-          db.ref(`fechas/${currentFecha}/estado`).set("CERRADA");
-
-          alert(`¡La ${nombreFecha} ha sido CERRADA y los puntos acumulados de R1 + R2 fueron computados!`);
         });
       });
     }
@@ -745,24 +788,24 @@
     }
 
     function aplicarCorreccionManual() {
-      if (!checkAdminAuth()) return;
+      checkAdminAuth(() => {
+        const key = document.getElementById('adminPlayerSelect').value;
+        const deltaGW = parseInt(document.getElementById('adminDeltaGW').value) || 0;
+        const deltaVP = parseFloat(document.getElementById('adminDeltaVP').value) || 0;
 
-      const key = document.getElementById('adminPlayerSelect').value;
-      const deltaGW = parseInt(document.getElementById('adminDeltaGW').value) || 0;
-      const deltaVP = parseFloat(document.getElementById('adminDeltaVP').value) || 0;
+        if (!key) return alert('Selecciona un jugador para aplicar la corrección.');
+        if (deltaGW === 0 && deltaVP === 0) return alert('Ingresa un valor distinto de cero en GW o VP.');
 
-      if (!key) return alert('Selecciona un jugador para aplicar la corrección.');
-      if (deltaGW === 0 && deltaVP === 0) return alert('Ingresa un valor distinto de cero en GW o VP.');
+        const playerRef = db.ref(`standings_globales/${key}`);
+        playerRef.once('value').then(snap => {
+          const current = snap.val() || { vp: 0, gw: 0 };
+          const newVP = Math.max(0, current.vp + deltaVP);
+          const newGW = Math.max(0, current.gw + deltaGW);
 
-      const playerRef = db.ref(`standings_globales/${key}`);
-      playerRef.once('value').then(snap => {
-        const current = snap.val() || { vp: 0, gw: 0 };
-        const newVP = Math.max(0, current.vp + deltaVP);
-        const newGW = Math.max(0, current.gw + deltaGW);
-
-        playerRef.update({ vp: newVP, gw: newGW }).then(() => {
-          alert('¡Ajuste manual aplicado correctamente!');
-          loadStandings();
+          playerRef.update({ vp: newVP, gw: newGW }).then(() => {
+            alert('¡Ajuste manual aplicado correctamente!');
+            loadStandings();
+          });
         });
       });
     }
