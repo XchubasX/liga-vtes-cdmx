@@ -176,9 +176,27 @@
         <div id="tablesOutput"><em>Las mesas aparecerán aquí al realizar el sorteo.</em></div>
       </div>
 
-      <!-- 5. Cierre de Fecha -->
+      <!-- 5. Ranking de la Fecha Actual -->
       <div class="card">
-        <h2>5. Finalizar Jornada Completa</h2>
+        <h2>📊 Ranking de la Fecha Actual</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Pos</th>
+              <th style="text-align: left;">Jugador</th>
+              <th>GW</th>
+              <th>VP</th>
+            </tr>
+          </thead>
+          <tbody id="fechaRankingTable">
+            <tr><td colspan="4">Calculando ranking de la fecha...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 6. Cierre de Fecha -->
+      <div class="card">
+        <h2>6. Finalizar Jornada Completa</h2>
         <p style="font-size: 0.8rem; color: #aaa;">Al cerrar la fecha, los puntos acumulados de TODAS las rondas jugadas en esta fecha se computarán de forma definitiva en la Tabla General.</p>
         <button id="closeFechaBtn" class="close-btn" onclick="cerrarFechaYComputar()">🔒 Cerrar Fecha (Computar R1 + R2)</button>
       </div>
@@ -495,6 +513,9 @@
         const rondasData = data.rondas || {};
         const mesasRonda = rondasData[currentRonda] ? rondasData[currentRonda].mesas || [] : [];
         renderTables(mesasRonda, isClosed);
+        
+        // Calcular y renderizar el ranking específico de esta fecha en tiempo real
+        calcularRankingFechaActual(rondasData);
       });
 
       db.ref(`asistencia/${currentFecha}`).on('value', (snapshot) => {
@@ -525,9 +546,29 @@
       const name = input.value.trim();
       if (!name) return alert('Ingresa un nombre.');
 
-      db.ref(`asistencia/${currentFecha}`).push({ name: name, present: false }).then(() => {
-        alert('¡Te has pre-registrado con éxito!');
-        input.value = '';
+      // Verificar si el jugador ya existe en la asistencia de esta fecha para evitar duplicados exactos
+      db.ref(`asistencia/${currentFecha}`).once('value').then(snapshot => {
+        const data = snapshot.val() || {};
+        let yaExiste = false;
+        Object.keys(data).forEach(id => {
+          if (data[id].name.toLowerCase() === name.toLowerCase()) {
+            yaExiste = true;
+          }
+        });
+
+        if (yaExiste) {
+          alert('Este jugador ya está registrado en esta fecha.');
+          input.value = '';
+          return;
+        }
+
+        // Si es nuevo en esta fecha, lo guardamos. Al mismo tiempo, aseguramos que quede registrado 
+        // en una lista global de participantes históricos de la liga por si se requiere para autocompletados futuros.
+        db.ref(`asistencia/${currentFecha}`).push({ name: name, present: false }).then(() => {
+          db.ref(`participantes_globales/${name.replace(/[.#$\/\[\]]/g, "_")}`).set({ name: name });
+          alert('¡Te has pre-registrado con éxito!');
+          input.value = '';
+        });
       });
     }
 
@@ -687,12 +728,72 @@
         }
 
         if (totalVPInTable > maxAllowedVP) {
-          return alert(`❌ ERROR DE REGLAMENTO:\nLa suma de VPs en la Mesa ${tIndex + 1} es ${totalVPInTable}. Una mesa de ${maxAllowedVP} jugadores no puede sumar más de ${maxAllowedVP} VPs.`);
+          return alert(`❌ ERROR DE REGLAMENTO:\nLa suma de VPs en la Mesa ${tIndex + 1} is ${totalVPInTable}. Una mesa de ${maxAllowedVP} jugadores no puede sumar más de ${maxAllowedVP} VPs.`);
         }
 
         db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas/${tIndex}/jugadores`).set(updatedPlayers).then(() => {
           alert(`¡Mesa ${tIndex + 1} actualizada con éxito!`);
         });
+      });
+    }
+
+    function calcularRankingFechaActual(rondas) {
+      const tbody = document.getElementById('fechaRankingTable');
+      let rankingFecha = {};
+
+      Object.keys(rondas).forEach(rondaKey => {
+        const mesas = rondas[rondaKey].mesas || [];
+        mesas.forEach(mesa => {
+          const jugadores = mesa.jugadores || [];
+          let maxVP = -1;
+          let winnersCount = 0;
+
+          jugadores.forEach(j => {
+            if (j.vp > maxVP) {
+              maxVP = j.vp;
+              winnersCount = 1;
+            } else if (j.vp === maxVP) {
+              winnersCount++;
+            }
+          });
+
+          jugadores.forEach(j => {
+            if (!rankingFecha[j.name]) {
+              rankingFecha[j.name] = { gw: 0, vp: 0 };
+            }
+            rankingFecha[j.name].vp += j.vp;
+
+            if (maxVP > 0 && j.vp === maxVP) {
+              rankingFecha[j.name].gw += (1 / winnersCount);
+            }
+          });
+        });
+      });
+
+      const sortedRanking = Object.keys(rankingFecha).map(name => ({
+        name: name,
+        gw: rankingFecha[name].gw,
+        vp: rankingFecha[name].vp
+      })).sort((a, b) => {
+        if (b.gw !== a.gw) return b.gw - a.gw;
+        return b.vp - a.vp;
+      });
+
+      if (sortedRanking.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4">Aún no hay puntos registrados en esta fecha.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = '';
+      sortedRanking.forEach((p, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td class="player-name">${p.name}</td>
+          <td>${p.gw % 1 === 0 ? p.gw : p.gw.toFixed(2)}</td>
+          <td>${p.vp % 1 === 0 ? p.vp : p.vp.toFixed(1)}</td>
+        `;
+        tbody.appendChild(tr);
       });
     }
 
@@ -720,110 +821,140 @@
               let winnersCount = 0;
 
               jugadores.forEach(j => {
-                if (j.vp > maxVP) { maxVP = j.vp; winnersCount = 1; }
-                else if (j.vp === maxVP && j.vp > 0) { winnersCount++; }
+                if (j.vp > maxVP) {
+                  maxVP = j.vp;
+                  winnersCount = 1;
+                } else if (j.vp === maxVP) {
+                  winnersCount++;
+                }
               });
 
               jugadores.forEach(j => {
-                const key = j.name.replace(/[.#$/\[\]]/g, "_");
-                if (!resumenFecha[key]) resumenFecha[key] = { name: j.name, vp: 0, gw: 0 };
-                
-                resumenFecha[key].vp += j.vp;
-                if (j.vp === maxVP && maxVP > 0 && winnersCount === 1) {
-                  resumenFecha[key].gw += 1;
+                if (!resumenFecha[j.name]) {
+                  resumenFecha[j.name] = { gw: 0, vp: 0 };
+                }
+                resumenFecha[j.name].vp += j.vp;
+
+                if (maxVP > 0 && j.vp === maxVP) {
+                  resumenFecha[j.name].gw += (1 / winnersCount);
                 }
               });
             });
           });
 
-          db.ref('standings_globales').once('value').then(snapStandings => {
-            let standings = snapStandings.val() || {};
-
-            Object.keys(resumenFecha).forEach(key => {
-              const rf = resumenFecha[key];
-              if (!standings[key]) {
-                standings[key] = { name: rf.name, vp: 0, gw: 0 };
-              }
-              standings[key].vp += rf.vp;
-              standings[key].gw += rf.gw;
+          db.ref(`resumen_fechas/${currentFecha}`).set(resumenFecha).then(() => {
+            db.ref(`fechas/${currentFecha}/estado`).set("CERRADA").then(() => {
+              alert(`¡Fecha ${nombreFecha} cerrada y computada con éxito!`);
+              loadFechaData();
             });
-
-            db.ref('standings_globales').set(standings);
-            db.ref(`fechas/${currentFecha}/estado`).set("CERRADA");
-
-            alert(`¡La ${nombreFecha} ha sido CERRADA y los puntos acumulados de R1 + R2 fueron computados!`);
           });
         });
       });
     }
 
     function loadStandings() {
-      db.ref('standings_globales').once('value').then(snapshot => {
+      db.ref('resumen_fechas').once('value').then(snapshot => {
         const data = snapshot.val() || {};
-        let standingsArray = [];
-        const adminSelect = document.getElementById('adminPlayerSelect');
-        adminSelect.innerHTML = '<option value="">Selecciona un jugador para corregir...</option>';
+        let standings = {};
 
-        Object.keys(data).forEach(key => {
-          standingsArray.push({ key: key, ...data[key] });
-          
-          const opt = document.createElement('option');
-          opt.value = key;
-          opt.textContent = data[key].name;
-          adminSelect.appendChild(opt);
+        Object.keys(data).forEach(fechaKey => {
+          const jugadoresFecha = data[fechaKey] || {};
+          Object.keys(jugadoresFecha).forEach(playerName => {
+            if (!standings[playerName]) {
+              standings[playerName] = { gw: 0, vp: 0 };
+            }
+            standings[playerName].gw += jugadoresFecha[playerName].gw || 0;
+            standings[playerName].vp += jugadoresFecha[playerName].vp || 0;
+          });
         });
 
-        standingsArray.sort((a, b) => {
-          if (b.gw !== a.gw) return b.gw - a.gw;
-          return b.vp - a.vp;
+        db.ref('ajustes_manuales').once('value').then(snapManual => {
+          const manualData = snapManual.val() || {};
+          Object.keys(manualData).forEach(playerName => {
+            if (!standings[playerName]) {
+              standings[playerName] = { gw: 0, vp: 0 };
+            }
+            standings[playerName].gw += manualData[playerName].gw || 0;
+            standings[playerName].vp += manualData[playerName].vp || 0;
+          });
+
+          renderStandingsTable(standings);
+          updateAdminPlayerSelect(Object.keys(standings));
         });
+      });
+    }
 
-        const tbody = document.getElementById('standingsTable');
-        tbody.innerHTML = '';
+    function renderStandingsTable(standings) {
+      const tbody = document.getElementById('standingsTable');
+      tbody.innerHTML = '';
 
-        if (standingsArray.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4">No hay resultados computados en el standing global.</td></tr>';
-          return;
-        }
+      const sortedPlayers = Object.keys(standings).map(name => ({
+        name: name,
+        gw: standings[name].gw,
+        vp: standings[name].vp
+      })).sort((a, b) => {
+        if (b.gw !== a.gw) return b.gw - a.gw;
+        return b.vp - a.vp;
+      });
 
-        standingsArray.forEach((st, idx) => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td><strong>#${idx + 1}</strong></td>
-            <td class="player-name">${st.name}</td>
-            <td><strong style="color: #66bb6a;">${st.gw}</strong></td>
-            <td><strong style="color: #ef5350;">${st.vp}</strong></td>
-          `;
-          tbody.appendChild(tr);
-        });
+      if (sortedPlayers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4">Aún no hay registros en la tabla general.</td></tr>`;
+        return;
+      }
+
+      sortedPlayers.forEach((p, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td class="player-name">${p.name}</td>
+          <td>${p.gw % 1 === 0 ? p.gw : p.gw.toFixed(2)}</td>
+          <td>${p.vp % 1 === 0 ? p.vp : p.vp.toFixed(1)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updateAdminPlayerSelect(playersList) {
+      const select = document.getElementById('adminPlayerSelect');
+      select.innerHTML = '<option value="">Selecciona un jugador...</option>';
+      playersList.sort().forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
       });
     }
 
     function aplicarCorreccionManual() {
       checkAdminAuth(() => {
-        const key = document.getElementById('adminPlayerSelect').value;
-        const deltaGW = parseInt(document.getElementById('adminDeltaGW').value) || 0;
+        const playerName = document.getElementById('adminPlayerSelect').value;
+        const deltaGW = parseFloat(document.getElementById('adminDeltaGW').value) || 0;
         const deltaVP = parseFloat(document.getElementById('adminDeltaVP').value) || 0;
 
-        if (!key) return alert('Selecciona un jugador para aplicar la corrección.');
-        if (deltaGW === 0 && deltaVP === 0) return alert('Ingresa un valor distinto de cero en GW o VP.');
+        if (!playerName) return alert("Selecciona un jugador.");
+        if (deltaGW === 0 && deltaVP === 0) return alert("Ingresa un valor diferente de 0 para GW o VP.");
 
-        const playerRef = db.ref(`standings_globales/${key}`);
-        playerRef.once('value').now = playerRef.once('value').then(snap => {
-          const current = snap.val() || { vp: 0, gw: 0 };
-          const newVP = Math.max(0, current.vp + deltaVP);
-          const newGW = Math.max(0, current.gw + deltaGW);
+        if (!confirm(`¿Aplicar ajuste manual a ${playerName}: GW (${deltaGW}), VP (${deltaVP})?`)) return;
 
-          playerRef.update({ vp: newVP, gw: newGW }).then(() => {
-            alert('¡Ajuste manual aplicado correctamente!');
+        db.ref(`ajustes_manuales/${playerName}`).once('value').then(snap => {
+          const current = snap.val() || { gw: 0, vp: 0 };
+          const nuevoGW = current.gw + deltaGW;
+          const nuevoVP = current.vp + deltaVP;
+
+          db.ref(`ajustes_manuales/${playerName}`).set({ gw: nuevoGW, vp: nuevoVP }).then(() => {
+            alert("Ajuste manual aplicado correctamente.");
+            document.getElementById('adminDeltaGW').value = "0";
+            document.getElementById('adminDeltaVP').value = "0";
             loadStandings();
           });
         });
       });
     }
 
-    // Inicializar app
-    initCatalogoFechas();
+    // Inicialización al cargar la página
+    window.onload = function() {
+      initCatalogoFechas();
+    };
   </script>
 </body>
 </html>
