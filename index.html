@@ -546,7 +546,6 @@
       const name = input.value.trim();
       if (!name) return alert('Ingresa un nombre.');
 
-      // Verificar si el jugador ya existe en la asistencia de esta fecha para evitar duplicados exactos
       db.ref(`asistencia/${currentFecha}`).once('value').then(snapshot => {
         const data = snapshot.val() || {};
         let yaExiste = false;
@@ -562,8 +561,6 @@
           return;
         }
 
-        // Si es nuevo en esta fecha, lo guardamos. Al mismo tiempo, aseguramos que quede registrado 
-        // en una lista global de participantes históricos de la liga por si se requiere para autocompletados futuros.
         db.ref(`asistencia/${currentFecha}`).push({ name: name, present: false }).then(() => {
           db.ref(`participantes_globales/${name.replace(/[.#$\/\[\]]/g, "_")}`).set({ name: name });
           alert('¡Te has pre-registrado con éxito!');
@@ -748,6 +745,7 @@
           let maxVP = -1;
           let winnersCount = 0;
 
+          // 1. Encontrar el VP máximo de la mesa y contar cuántos jugadores lo tienen (empates)
           jugadores.forEach(j => {
             if (j.vp > maxVP) {
               maxVP = j.vp;
@@ -757,14 +755,15 @@
             }
           });
 
+          // 2. Acumular VPs y GWs (Si hay empate estricto en el primer lugar con winnersCount > 1, no se otorga GW)
           jugadores.forEach(j => {
             if (!rankingFecha[j.name]) {
               rankingFecha[j.name] = { gw: 0, vp: 0 };
             }
             rankingFecha[j.name].vp += j.vp;
 
-            if (maxVP > 0 && j.vp === maxVP) {
-              rankingFecha[j.name].gw += (1 / winnersCount);
+            if (maxVP > 0 && j.vp === maxVP && winnersCount === 1) {
+              rankingFecha[j.name].gw += 1;
             }
           });
         });
@@ -790,7 +789,7 @@
         tr.innerHTML = `
           <td>${index + 1}</td>
           <td class="player-name">${p.name}</td>
-          <td>${p.gw % 1 === 0 ? p.gw : p.gw.toFixed(2)}</td>
+          <td>${p.gw}</td>
           <td>${p.vp % 1 === 0 ? p.vp : p.vp.toFixed(1)}</td>
         `;
         tbody.appendChild(tr);
@@ -820,6 +819,7 @@
               let maxVP = -1;
               let winnersCount = 0;
 
+              // 1. Encontrar el VP máximo de la mesa y contar empates
               jugadores.forEach(j => {
                 if (j.vp > maxVP) {
                   maxVP = j.vp;
@@ -829,14 +829,15 @@
                 }
               });
 
+              // 2. Acumular VPs y GWs sin fraccionar (si hay empate, GW = 0 para los empatados)
               jugadores.forEach(j => {
                 if (!resumenFecha[j.name]) {
                   resumenFecha[j.name] = { gw: 0, vp: 0 };
                 }
                 resumenFecha[j.name].vp += j.vp;
 
-                if (maxVP > 0 && j.vp === maxVP) {
-                  resumenFecha[j.name].gw += (1 / winnersCount);
+                if (maxVP > 0 && j.vp === maxVP && winnersCount === 1) {
+                  resumenFecha[j.name].gw += 1;
                 }
               });
             });
@@ -907,7 +908,7 @@
         tr.innerHTML = `
           <td>${index + 1}</td>
           <td class="player-name">${p.name}</td>
-          <td>${p.gw % 1 === 0 ? p.gw : p.gw.toFixed(2)}</td>
+          <td>${p.gw}</td>
           <td>${p.vp % 1 === 0 ? p.vp : p.vp.toFixed(1)}</td>
         `;
         tbody.appendChild(tr);
