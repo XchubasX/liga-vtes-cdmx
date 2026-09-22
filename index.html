@@ -38,11 +38,18 @@
     button.warning-btn:hover { background: #ff9800; }
     button.danger-btn { background: #b71c1c; border: 1px solid #ff5252; }
     button.danger-btn:hover { background: #d32f2f; }
+    button.reopen-btn { background: #6a1b9a; }
+    button.reopen-btn:hover { background: #8e24aa; }
+    button.icon-btn { width: auto; padding: 4px 8px; margin-top: 0; background: transparent; border: 1px solid #444; font-size: 0.85rem; }
+    button.icon-btn:hover { background: #333; }
+    button.icon-btn.danger { border-color: #b71c1c; }
+    button.icon-btn.danger:hover { background: #b71c1c; }
     
     ul { list-style: none; padding: 0; margin: 0; }
-    li { background: #2a2a2a; margin-bottom: 8px; padding: 10px 15px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; }
+    li { background: #2a2a2a; margin-bottom: 8px; padding: 10px 15px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
     .checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
     input[type="checkbox"] { transform: scale(1.3); cursor: pointer; }
+    .player-actions { display: flex; gap: 6px; align-items: center; }
     
     .table-box { background: #2a1515; border-left: 4px solid #d32f2f; padding: 12px; margin-top: 15px; border-radius: 0 4px 4px 0; }
     .status-badge { font-size: 0.8rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
@@ -50,6 +57,7 @@
     .absent { background: #424242; color: #bdbdbd; }
     .badge-open { background: #2e7d32; color: white; }
     .badge-closed { background: #c62828; color: white; }
+    .badge-bye { background: #6a1b9a; color: #e1bee7; }
     
     .vp-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; background: #1e1e1e; padding: 6px 10px; border-radius: 4px; }
     
@@ -68,6 +76,21 @@
     .danger-zone { border-top: 1px dashed #ef5350; margin-top: 15px; padding-top: 15px; }
     
     .fecha-control-row { display: flex; gap: 8px; margin-bottom: 10px; }
+
+    .ranking-note { font-size: 0.8rem; padding: 8px 10px; border-radius: 4px; margin-bottom: 10px; font-weight: bold; }
+    .ranking-note.provisional { background: #2a1c00; color: #ffb74d; border: 1px solid #f57c00; }
+    .ranking-note.final { background: #0d2a12; color: #81c784; border: 1px solid #2e7d32; }
+
+    /* Armado Manual de Mesas */
+    .manual-box { background: #14202a; border: 1px solid #1565c0; padding: 12px; border-radius: 6px; margin-top: 15px; }
+    .manual-box h4 { margin: 0 0 8px 0; color: #64b5f6; font-size: 0.95rem; }
+    .manual-pending-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .manual-chip { background: #2a2a2a; border: 1px solid #444; padding: 6px 10px; border-radius: 16px; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+    .manual-chip input[type="checkbox"] { transform: scale(1.1); }
+    .manual-counter { font-size: 0.8rem; color: #aaa; margin-bottom: 8px; }
+    .manual-staged-table { background: #1e1e1e; border-left: 3px solid #1565c0; padding: 8px 12px; margin-bottom: 8px; border-radius: 0 4px 4px 0; font-size: 0.9rem; }
+    .manual-bye-list { font-size: 0.8rem; color: #ce93d8; margin-top: 8px; }
+    .manual-actions-row { display: flex; gap: 8px; }
 
     /* Custom Password Prompt Modal */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
@@ -126,6 +149,8 @@
         <div style="display: flex; gap: 8px;">
           <button class="add-btn" onclick="toggleNuevaFechaForm('nueva')" style="flex: 1;">➕ Crear Siguiente Fecha</button>
         </div>
+
+        <button id="reabrirFechaBtn" class="reopen-btn" onclick="reabrirFecha()" style="display: none;">🔓 Reabrir Fecha</button>
         
         <div id="nuevaFechaForm" class="new-fecha-box" style="display: none;">
           <h3 style="margin-top: 0; font-size: 0.95rem; color: #aaa;" id="formFechaTitle">Nueva Jornada</h3>
@@ -147,7 +172,7 @@
       <!-- 1. Pre-Registro (ÚNICA SECCIÓN PÚBLICA LIBRE) -->
       <div class="card" style="border-color: #2e7d32;">
         <h2>1. Pre-Registro de Jugador</h2>
-        <input type="text" id="playerName" placeholder="Nombre o Nick de Archon">
+        <input type="text" id="playerName" placeholder="Nombre o Nick de Archon" onkeydown="if(event.key==='Enter'){registerPlayer();}">
         <button class="add-btn" onclick="registerPlayer()">Anotarme a esta Fecha</button>
       </div>
 
@@ -157,7 +182,7 @@
           <span>2. Pase de Lista (Venue)</span>
           <button class="warning-btn" onclick="resetPaseDeLista()" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">🧹 Reset Pase de Lista</button>
         </h2>
-        <p style="font-size: 0.8rem; color: #aaa;">Marca la casilla únicamente cuando el jugador LLEGUE FÍSICAMENTE (Requiere Admin).</p>
+        <p style="font-size: 0.8rem; color: #aaa;">Marca la casilla únicamente cuando el jugador LLEGUE FÍSICAMENTE (Requiere Admin). Usa ✏️ para corregir un nombre mal escrito o 🗑️ para eliminarlo de esta fecha.</p>
         <ul id="playerList"></ul>
       </div>
 
@@ -168,6 +193,27 @@
           <button class="warning-btn" onclick="resetRondaActual()" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">🧹 Limpiar Mesas de esta Ronda</button>
         </h2>
         <button onclick="generateTables()" style="background: #2e7d32;">🎲 Sortear Mesas (<span id="rondaLabelText">Ronda 1</span>)</button>
+        <button class="secondary" onclick="toggleManualMode()" id="toggleManualBtn">🛠️ Armar Mesas Manualmente</button>
+
+        <div id="manualBuilderBox" class="manual-box" style="display: none;">
+          <h4>Armado Manual — <span id="manualRondaLabel">Ronda 1</span></h4>
+          <div class="manual-counter" id="manualCounter">Jugadores sin asignar: 0</div>
+
+          <div class="manual-pending-list" id="manualPendingList"></div>
+
+          <div class="manual-actions-row">
+            <button class="add-btn" onclick="crearMesaManual()" style="flex: 1;">➕ Crear Mesa con Seleccionados</button>
+            <button class="warning-btn" onclick="marcarByeSeleccionados()" style="flex: 1;">💤 Marcar Descanso (Bye)</button>
+          </div>
+
+          <div id="manualStagedTables"></div>
+          <div id="manualByeList" class="manual-bye-list"></div>
+
+          <div class="manual-actions-row" style="margin-top: 10px;">
+            <button class="secondary" onclick="cancelarManualMode()" style="flex: 1;">✖ Cancelar</button>
+            <button class="add-btn" onclick="confirmarMesasManuales()" style="flex: 1;">✅ Confirmar Mesas</button>
+          </div>
+        </div>
       </div>
 
       <!-- 4. Captura y Corrección de Mesas -->
@@ -179,6 +225,7 @@
       <!-- 5. Ranking de la Fecha Actual -->
       <div class="card">
         <h2>📊 Ranking de la Fecha Actual</h2>
+        <div id="rankingEstadoNota" class="ranking-note provisional">⏱ Ranking en vivo — se computará de forma definitiva al cerrar la fecha.</div>
         <table>
           <thead>
             <tr>
@@ -285,12 +332,28 @@
     let modoFormFecha = "nueva";
     let passwordModalCallback = null;
 
+    // Estado del Armado Manual de Mesas
+    let manualModeActive = false;
+    let manualPendingPlayers = [];
+    let manualStagedTables = [];
+    let manualByePlayers = [];
+
     // Función auxiliar para formatear de AAAA-MM-DD a DD/MM/AAAA
     function formatearFechaDDMMAAAA(fechaISO) {
       if (!fechaISO) return 'Sin fecha asignada';
       const partes = fechaISO.split('-');
       if (partes.length !== 3) return fechaISO;
       return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+
+    // Función auxiliar para limpiar espacios extra en nombres
+    function sanearNombre(nombre) {
+      return nombre.replace(/\s+/g, ' ').trim();
+    }
+
+    // Función auxiliar para escapar comillas simples en atributos onclick
+    function escapeAttr(str) {
+      return String(str).replace(/'/g, "\\'");
     }
 
     function promptPassword(message, callback) {
@@ -465,6 +528,8 @@
       document.getElementById('ronda1Btn').classList.toggle('active', rondaKey === 'ronda_1');
       document.getElementById('ronda2Btn').classList.toggle('active', rondaKey === 'ronda_2');
       document.getElementById('rondaLabelText').textContent = rondaKey === 'ronda_1' ? 'Ronda 1' : 'Ronda 2';
+      document.getElementById('manualRondaLabel').textContent = rondaKey === 'ronda_1' ? 'Ronda 1' : 'Ronda 2';
+      cancelarManualMode();
       loadFechaData();
     }
 
@@ -483,6 +548,7 @@
         document.getElementById('newFechaDate').value = infoFecha ? (infoFecha.fecha_calendario || '') : '';
       }
 
+      cancelarManualMode();
       loadFechaData();
     }
 
@@ -495,6 +561,8 @@
         
         const badge = document.getElementById('fechaStatusBadge');
         const closeBtn = document.getElementById('closeFechaBtn');
+        const reabrirBtn = document.getElementById('reabrirFechaBtn');
+        const rankingNota = document.getElementById('rankingEstadoNota');
         
         if (isClosed) {
           badge.textContent = "CERRADA";
@@ -502,12 +570,18 @@
           closeBtn.disabled = true;
           closeBtn.style.opacity = "0.5";
           closeBtn.textContent = "🔒 Fecha Cerrada y Computada";
+          reabrirBtn.style.display = 'block';
+          rankingNota.className = "ranking-note final";
+          rankingNota.textContent = "✅ Fecha cerrada — estos valores ya fueron computados a la Tabla General.";
         } else {
           badge.textContent = "ABIERTA";
           badge.className = "status-badge badge-open";
           closeBtn.disabled = false;
           closeBtn.style.opacity = "1";
           closeBtn.textContent = "🔒 Cerrar Fecha (Computar R1 + R2)";
+          reabrirBtn.style.display = 'none';
+          rankingNota.className = "ranking-note provisional";
+          rankingNota.textContent = "⏱ Ranking en vivo — se computará de forma definitiva al cerrar la fecha.";
         }
 
         const rondasData = data.rondas || {};
@@ -532,9 +606,15 @@
               <input type="checkbox" ${player.present ? 'checked' : ''} onchange="togglePresence('${id}', this.checked)">
               <strong>${player.name}</strong>
             </label>
-            <span class="status-badge ${player.present ? 'present' : 'absent'}">
-              ${player.present ? 'En venue' : 'Ausente'}
-            </span>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span class="status-badge ${player.present ? 'present' : 'absent'}">
+                ${player.present ? 'En venue' : 'Ausente'}
+              </span>
+              <div class="player-actions">
+                <button class="icon-btn" title="Editar nombre" onclick="editarJugador('${id}', '${escapeAttr(player.name)}')">✏️</button>
+                <button class="icon-btn danger" title="Eliminar de esta fecha" onclick="eliminarJugador('${id}', '${escapeAttr(player.name)}')">🗑️</button>
+              </div>
+            </div>
           `;
           list.appendChild(li);
         });
@@ -543,7 +623,7 @@
 
     function registerPlayer() {
       const input = document.getElementById('playerName');
-      const name = input.value.trim();
+      const name = sanearNombre(input.value);
       if (!name) return alert('Ingresa un nombre.');
 
       db.ref(`asistencia/${currentFecha}`).once('value').then(snapshot => {
@@ -562,9 +642,41 @@
         }
 
         db.ref(`asistencia/${currentFecha}`).push({ name: name, present: false }).then(() => {
-          db.ref(`participantes_globales/${name.replace(/[.#$\/\[\]]/g, "_")}`).set({ name: name });
           alert('¡Te has pre-registrado con éxito!');
           input.value = '';
+        });
+      });
+    }
+
+    function editarJugador(id, nombreActual) {
+      checkAdminAuth(() => {
+        const nuevoNombreRaw = prompt("Corrige el nombre del jugador:", nombreActual);
+        if (nuevoNombreRaw === null) return;
+        const nuevoNombre = sanearNombre(nuevoNombreRaw);
+        if (!nuevoNombre) return alert("El nombre no puede estar vacío.");
+
+        db.ref(`asistencia/${currentFecha}`).once('value').then(snapshot => {
+          const data = snapshot.val() || {};
+          let duplicado = false;
+          Object.keys(data).forEach(otherId => {
+            if (otherId !== id && data[otherId].name.toLowerCase() === nuevoNombre.toLowerCase()) {
+              duplicado = true;
+            }
+          });
+          if (duplicado) return alert("Ya existe otro jugador con ese nombre en esta fecha.");
+
+          db.ref(`asistencia/${currentFecha}/${id}`).update({ name: nuevoNombre }).then(() => {
+            alert("Nombre actualizado correctamente.");
+          });
+        });
+      });
+    }
+
+    function eliminarJugador(id, nombre) {
+      checkAdminAuth(() => {
+        if (!confirm(`¿Eliminar a "${nombre}" del pase de lista de esta fecha? Esto no afecta la Tabla General.`)) return;
+        db.ref(`asistencia/${currentFecha}/${id}`).remove().then(() => {
+          alert(`"${nombre}" fue eliminado de esta fecha.`);
         });
       });
     }
@@ -592,6 +704,18 @@
 
         db.ref(`fechas/${currentFecha}/rondas/${currentRonda}`).remove().then(() => {
           alert(`Se han borrado las mesas de la ${rondaNombre}.`);
+        });
+      });
+    }
+
+    function reabrirFecha() {
+      checkAdminAuth(() => {
+        const nombreFecha = catalogoFechasDict[currentFecha] ? catalogoFechasDict[currentFecha].nombre : currentFecha;
+        if (!confirm(`¿Reabrir la ${nombreFecha}? Podrás corregir mesas y VPs. Al volver a cerrarla, los totales de la Tabla General se recalcularán y sobrescribirán con los nuevos valores.`)) return;
+
+        db.ref(`fechas/${currentFecha}/estado`).set("ABIERTA").then(() => {
+          alert(`¡${nombreFecha} reabierta! Recuerda volver a cerrarla cuando termines de corregir.`);
+          loadFechaData();
         });
       });
     }
@@ -643,13 +767,14 @@
             presentPlayers = shuffle(presentPlayers);
 
             let numFives = 0, numFours = 0;
+            let encontrado = false;
             for (let f = Math.floor(total / 5); f >= 0; f--) {
               let rem = total - (f * 5);
-              if (rem % 4 === 0) { numFives = f; numFours = rem / 4; break; }
+              if (rem % 4 === 0) { numFives = f; numFours = rem / 4; encontrado = true; break; }
             }
 
-            if (numFives === 0 && numFours === 0) {
-              return alert(`No se puede dividir equitativamente a ${total} jugadores en mesas de 4 y 5.`);
+            if (!encontrado) {
+              return alert(`No se puede dividir equitativamente a ${total} jugadores en mesas de 4 y 5.\n\nUsa el botón "🛠️ Armar Mesas Manualmente" para armar las mesas a mano y dejar a alguien de descanso (bye) si es necesario.`);
             }
 
             let tables = [];
@@ -670,6 +795,151 @@
         });
       });
     }
+
+    // ==================== ARMADO MANUAL DE MESAS ====================
+
+    function toggleManualMode() {
+      checkAdminAuth(() => {
+        if (manualModeActive) {
+          cancelarManualMode();
+          return;
+        }
+
+        db.ref(`fechas/${currentFecha}/estado`).once('value').then(snap => {
+          if (snap.val() === "CERRADA") {
+            return alert("No se pueden armar mesas en una fecha CERRADA.");
+          }
+
+          db.ref(`asistencia/${currentFecha}`).once('value').then(snapshot => {
+            const data = snapshot.val() || {};
+            const presentes = [];
+            Object.keys(data).forEach(id => {
+              if (data[id].present) presentes.push(data[id].name);
+            });
+
+            if (presentes.length < 4) {
+              return alert('Se necesitan al menos 4 jugadores presentes en esta fecha.');
+            }
+
+            manualModeActive = true;
+            manualPendingPlayers = presentes.slice();
+            manualStagedTables = [];
+            manualByePlayers = [];
+            document.getElementById('manualBuilderBox').style.display = 'block';
+            document.getElementById('manualRondaLabel').textContent = currentRonda === 'ronda_1' ? 'Ronda 1' : 'Ronda 2';
+            renderManualUI();
+          });
+        });
+      });
+    }
+
+    function cancelarManualMode() {
+      manualModeActive = false;
+      manualPendingPlayers = [];
+      manualStagedTables = [];
+      manualByePlayers = [];
+      const box = document.getElementById('manualBuilderBox');
+      if (box) box.style.display = 'none';
+    }
+
+    function renderManualUI() {
+      const counter = document.getElementById('manualCounter');
+      counter.textContent = `Jugadores sin asignar: ${manualPendingPlayers.length}`;
+
+      const pendingList = document.getElementById('manualPendingList');
+      pendingList.innerHTML = '';
+      manualPendingPlayers.forEach((name, idx) => {
+        const chip = document.createElement('label');
+        chip.className = 'manual-chip';
+        chip.innerHTML = `<input type="checkbox" data-idx="${idx}" class="manual-pending-checkbox"> ${name}`;
+        pendingList.appendChild(chip);
+      });
+
+      const stagedBox = document.getElementById('manualStagedTables');
+      stagedBox.innerHTML = '';
+      manualStagedTables.forEach((mesa, tIndex) => {
+        const div = document.createElement('div');
+        div.className = 'manual-staged-table';
+        const nombres = mesa.jugadores.map(j => j.name).join(', ');
+        div.innerHTML = `<strong>Mesa ${tIndex + 1} (${mesa.jugadores.length}):</strong> ${nombres}
+          <button class="icon-btn" style="margin-left:8px;" onclick="deshacerMesaManual(${tIndex})">↩ Deshacer</button>`;
+        stagedBox.appendChild(div);
+      });
+
+      const byeBox = document.getElementById('manualByeList');
+      if (manualByePlayers.length === 0) {
+        byeBox.innerHTML = '';
+      } else {
+        byeBox.innerHTML = '💤 Descansan esta ronda: ' + manualByePlayers.map((name, i) =>
+          `<span class="status-badge badge-bye" style="margin-right:4px;">${name} <a href="javascript:void(0)" onclick="deshacerByeManual(${i})" style="color:#fff; text-decoration:underline;">✕</a></span>`
+        ).join(' ');
+      }
+    }
+
+    function getManualSeleccionados() {
+      const checks = document.querySelectorAll('.manual-pending-checkbox:checked');
+      const idxs = Array.from(checks).map(c => parseInt(c.getAttribute('data-idx')));
+      return idxs.sort((a, b) => b - a); // descendente para poder hacer splice sin desfasar índices
+    }
+
+    function crearMesaManual() {
+      const idxsDesc = getManualSeleccionados();
+      if (idxsDesc.length !== 4 && idxsDesc.length !== 5) {
+        return alert('Selecciona exactamente 4 o 5 jugadores para formar una mesa.');
+      }
+
+      const seleccionados = idxsDesc.map(i => manualPendingPlayers[i]).reverse();
+      idxsDesc.forEach(i => manualPendingPlayers.splice(i, 1));
+
+      manualStagedTables.push({ jugadores: seleccionados.map(name => ({ name: name, vp: 0 })) });
+      renderManualUI();
+    }
+
+    function marcarByeSeleccionados() {
+      const idxsDesc = getManualSeleccionados();
+      if (idxsDesc.length === 0) {
+        return alert('Selecciona al menos un jugador para marcarlo de descanso (bye).');
+      }
+      if (manualPendingPlayers.length - idxsDesc.length < 0) return;
+
+      const seleccionados = idxsDesc.map(i => manualPendingPlayers[i]).reverse();
+      idxsDesc.forEach(i => manualPendingPlayers.splice(i, 1));
+      manualByePlayers.push(...seleccionados);
+      renderManualUI();
+    }
+
+    function deshacerMesaManual(tIndex) {
+      const mesa = manualStagedTables[tIndex];
+      mesa.jugadores.forEach(j => manualPendingPlayers.push(j.name));
+      manualStagedTables.splice(tIndex, 1);
+      renderManualUI();
+    }
+
+    function deshacerByeManual(i) {
+      const name = manualByePlayers[i];
+      manualByePlayers.splice(i, 1);
+      manualPendingPlayers.push(name);
+      renderManualUI();
+    }
+
+    function confirmarMesasManuales() {
+      if (manualPendingPlayers.length > 0) {
+        return alert(`Todavía hay ${manualPendingPlayers.length} jugador(es) sin asignar a una mesa ni marcados de descanso. Asígnalos o márcalos como bye antes de confirmar.`);
+      }
+      if (manualStagedTables.length === 0) {
+        return alert('No has armado ninguna mesa todavía.');
+      }
+
+      const nombresBye = manualByePlayers.length > 0 ? `\n\nDescansan esta ronda: ${manualByePlayers.join(', ')}` : '';
+      if (!confirm(`¿Confirmar ${manualStagedTables.length} mesa(s) armadas manualmente para la ${currentRonda === 'ronda_1' ? 'Ronda 1' : 'Ronda 2'}?${nombresBye}`)) return;
+
+      db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas`).set(manualStagedTables).then(() => {
+        alert('¡Mesas manuales guardadas con éxito!');
+        cancelarManualMode();
+      });
+    }
+
+    // ==================== FIN ARMADO MANUAL ====================
 
     function renderTables(tables, isClosed) {
       const output = document.getElementById('tablesOutput');
@@ -725,7 +995,7 @@
         }
 
         if (totalVPInTable > maxAllowedVP) {
-          return alert(`❌ ERROR DE REGLAMENTO:\nLa suma de VPs en la Mesa ${tIndex + 1} is ${totalVPInTable}. Una mesa de ${maxAllowedVP} jugadores no puede sumar más de ${maxAllowedVP} VPs.`);
+          return alert(`❌ ERROR DE REGLAMENTO:\nLa suma de VPs en la Mesa ${tIndex + 1} es ${totalVPInTable}. Una mesa de ${maxAllowedVP} jugadores no puede sumar más de ${maxAllowedVP} VPs.`);
         }
 
         db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas/${tIndex}/jugadores`).set(updatedPlayers).then(() => {
