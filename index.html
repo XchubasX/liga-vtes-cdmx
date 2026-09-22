@@ -230,8 +230,24 @@
 
       <!-- 1. Pre-Registro (ÚNICA SECCIÓN PÚBLICA LIBRE) -->
       <div class="card" style="border-color: #2e7d32;">
-        <h2>1. Pre-Registro de Jugador</h2>
-        <input type="text" id="playerName" placeholder="Nombre o Nick de Archon" onkeydown="if(event.key==='Enter'){registerPlayer();}">
+        <h2>
+          <span>1. Pre-Registro de Jugador</span>
+          <button class="secondary" onclick="toggleCatalogoJugadores()" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">⚙️ Catálogo</button>
+        </h2>
+
+        <div id="catalogoJugadoresBox" style="display:none; margin-bottom: 15px; background:#212121; border:1px solid #444; padding:10px; border-radius:6px;">
+          <h4 style="margin:0 0 8px 0; font-size:0.9rem; color:#aaa;">Catálogo de Jugadores (editable)</h4>
+          <p style="font-size:0.75rem; color:#888; margin:0 0 8px 0;">Sirve para sugerir nombres ya conocidos al escribir y evitar duplicados por error de tipeo. Editar o eliminar aquí no modifica registros ya guardados en fechas pasadas.</p>
+          <ul id="catalogoJugadoresList"></ul>
+          <div class="fecha-control-row">
+            <input type="text" id="nuevoJugadorCatalogoInput" placeholder="Nombre de jugador" style="margin-bottom:0; flex:1;">
+            <button class="add-btn" onclick="agregarJugadorCatalogo()" style="width:auto; padding: 8px 14px; margin-top: 0;">➕</button>
+          </div>
+          <button class="secondary" onclick="migrarJugadoresExistentes()" style="width:100%; margin-top:10px; font-size:0.75rem;">🔄 Migrar Jugadores Existentes (una sola vez)</button>
+        </div>
+
+        <input type="text" id="playerName" list="catalogoJugadoresDatalist" placeholder="Nombre o Nick de Archon" onkeydown="if(event.key==='Enter'){registerPlayer();}">
+        <datalist id="catalogoJugadoresDatalist"></datalist>
         <button class="add-btn" onclick="registerPlayer()">Anotarme a esta Fecha</button>
       </div>
 
@@ -517,11 +533,11 @@
     }
 
     // Reemplazo de prompt(). callback(valorTexto|null) recibe el texto o null si canceló.
-    function mostrarPrompt(mensaje, valorInicial, callback, titulo) {
-      abrirModalGenerico('prompt', titulo || 'Ingresa un valor', mensaje, valorInicial, callback);
+    function mostrarPrompt(mensaje, valorInicial, callback, titulo, datalistId) {
+      abrirModalGenerico('prompt', titulo || 'Ingresa un valor', mensaje, valorInicial, callback, datalistId);
     }
 
-    function abrirModalGenerico(tipo, titulo, mensaje, valorInicial, callback) {
+    function abrirModalGenerico(tipo, titulo, mensaje, valorInicial, callback, datalistId) {
       modalGenericoTipo = tipo;
       modalGenericoCallback = callback || null;
 
@@ -535,8 +551,10 @@
       if (tipo === 'prompt') {
         input.style.display = 'block';
         input.value = valorInicial || '';
+        if (datalistId) { input.setAttribute('list', datalistId); } else { input.removeAttribute('list'); }
       } else {
         input.style.display = 'none';
+        input.removeAttribute('list');
       }
 
       cancelBtn.style.display = (tipo === 'alert') ? 'none' : 'block';
@@ -980,6 +998,7 @@
         }
 
         db.ref(`asistencia/${currentFecha}`).push({ name: name, present: false }).then(() => {
+          asegurarJugadorEnCatalogo(name);
           ocultarGuardando();
           mostrarAlerta('¡Te has pre-registrado con éxito!');
           input.value = '';
@@ -1006,11 +1025,12 @@
 
           mostrarGuardando();
           db.ref(`asistencia/${currentFecha}/${id}`).update({ name: nuevoNombre }).then(() => {
+            asegurarJugadorEnCatalogo(nuevoNombre);
             ocultarGuardando();
             mostrarAlerta("Nombre actualizado correctamente.");
           });
         });
-        });
+        }, undefined, 'catalogoJugadoresDatalist');
       });
     }
 
@@ -1307,6 +1327,169 @@
     // ==================== FIN ARMADO MANUAL ====================
 
     // ==================== HAZAÑAS Y MENCIONES ====================
+
+    let catalogoJugadoresDict = {};
+
+    function initCatalogoJugadores() {
+      db.ref('catalogo_jugadores').on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        catalogoJugadoresDict = data;
+
+        const ul = document.getElementById('catalogoJugadoresList');
+        ul.innerHTML = '';
+        const ids = Object.keys(data);
+        if (ids.length === 0) {
+          ul.innerHTML = '<li style="justify-content:center;"><em style="color:#888;">Aún no hay jugadores en el catálogo.</em></li>';
+        } else {
+          ids.sort((a, b) => data[a].nombre.localeCompare(data[b].nombre)).forEach(id => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+              <span>${data[id].nombre}</span>
+              <div class="player-actions">
+                <button class="icon-btn" title="Editar" onclick="editarJugadorCatalogo('${id}', '${escapeAttr(data[id].nombre)}')">✏️</button>
+                <button class="icon-btn danger" title="Eliminar" onclick="eliminarJugadorCatalogo('${id}', '${escapeAttr(data[id].nombre)}')">🗑️</button>
+              </div>
+            `;
+            ul.appendChild(li);
+          });
+        }
+
+        const datalist = document.getElementById('catalogoJugadoresDatalist');
+        datalist.innerHTML = '';
+        Object.keys(data).sort((a, b) => data[a].nombre.localeCompare(data[b].nombre)).forEach(id => {
+          const opt = document.createElement('option');
+          opt.value = data[id].nombre;
+          datalist.appendChild(opt);
+        });
+      });
+    }
+
+    function toggleCatalogoJugadores() {
+      checkAdminAuth(() => {
+        const box = document.getElementById('catalogoJugadoresBox');
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+      });
+    }
+
+    // Agrega el nombre al catálogo si aún no existe (comparación insensible a mayúsculas).
+    // Es una escritura silenciosa de respaldo: no requiere PIN porque ocurre como
+    // consecuencia de una acción ya permitida (registrar o corregir un jugador).
+    function asegurarJugadorEnCatalogo(nombre) {
+      const yaExiste = Object.keys(catalogoJugadoresDict).some(id => catalogoJugadoresDict[id].nombre.toLowerCase() === nombre.toLowerCase());
+      if (yaExiste) return;
+      db.ref('catalogo_jugadores').push({ nombre: nombre });
+    }
+
+    function agregarJugadorCatalogo() {
+      checkAdminAuth(() => {
+        const input = document.getElementById('nuevoJugadorCatalogoInput');
+        const nombre = sanearNombre(input.value);
+        if (!nombre) return mostrarAlerta('Ingresa el nombre del jugador.');
+
+        const yaExiste = Object.keys(catalogoJugadoresDict).some(id => catalogoJugadoresDict[id].nombre.toLowerCase() === nombre.toLowerCase());
+        if (yaExiste) return mostrarAlerta('Ese jugador ya existe en el catálogo.');
+
+        mostrarGuardando();
+        db.ref('catalogo_jugadores').push({ nombre: nombre }).then(() => {
+          ocultarGuardando();
+          input.value = '';
+        });
+      });
+    }
+
+    function editarJugadorCatalogo(id, nombreActual) {
+      checkAdminAuth(() => {
+        mostrarPrompt('Corrige el nombre del jugador en el catálogo:', nombreActual, (nuevoRaw) => {
+          if (nuevoRaw === null) return;
+          const nuevo = sanearNombre(nuevoRaw);
+          if (!nuevo) return mostrarAlerta('El nombre no puede estar vacío.');
+
+          const duplicado = Object.keys(catalogoJugadoresDict).some(otherId => otherId !== id && catalogoJugadoresDict[otherId].nombre.toLowerCase() === nuevo.toLowerCase());
+          if (duplicado) return mostrarAlerta('Ya existe otro jugador con ese nombre en el catálogo.');
+
+          mostrarGuardando();
+          db.ref(`catalogo_jugadores/${id}`).update({ nombre: nuevo }).then(() => ocultarGuardando());
+        });
+      });
+    }
+
+    function eliminarJugadorCatalogo(id, nombre) {
+      checkAdminAuth(() => {
+        mostrarConfirm(`¿Eliminar "${nombre}" del catálogo de jugadores? Esto solo afecta el autocompletado; los registros ya guardados en fechas y en la Tabla General no se ven afectados.`, (aceptado) => {
+          if (!aceptado) return;
+          mostrarGuardando();
+          db.ref(`catalogo_jugadores/${id}`).remove().then(() => ocultarGuardando());
+        });
+      });
+    }
+
+    function migrarJugadoresExistentes() {
+      checkAdminAuth(() => {
+        mostrarConfirm('Esto revisará todas las fechas, la Tabla General, los ajustes manuales y las hazañas otorgadas, y agregará al catálogo cualquier nombre que aún no esté en él. Es seguro ejecutarlo varias veces (no crea duplicados). ¿Continuar?', (aceptado) => {
+          if (!aceptado) return;
+
+          mostrarGuardando('Migrando jugadores...');
+
+          Promise.all([
+            db.ref('asistencia').once('value'),
+            db.ref('resumen_fechas').once('value'),
+            db.ref('ajustes_manuales').once('value'),
+            db.ref('fechas').once('value')
+          ]).then(([snapAsistencia, snapResumen, snapAjustes, snapFechas]) => {
+            const nombresEncontrados = {};
+
+            const registrar = (nombreCrudo) => {
+              const nombre = sanearNombre(nombreCrudo || '');
+              if (!nombre) return;
+              const key = nombre.toLowerCase();
+              if (!nombresEncontrados[key]) nombresEncontrados[key] = nombre;
+            };
+
+            const dataAsistencia = snapAsistencia.val() || {};
+            Object.keys(dataAsistencia).forEach(fechaKey => {
+              const jugadores = dataAsistencia[fechaKey] || {};
+              Object.keys(jugadores).forEach(id => registrar(jugadores[id].name));
+            });
+
+            const dataResumen = snapResumen.val() || {};
+            Object.keys(dataResumen).forEach(fechaKey => {
+              Object.keys(dataResumen[fechaKey] || {}).forEach(nombre => registrar(nombre));
+            });
+
+            const dataAjustes = snapAjustes.val() || {};
+            Object.keys(dataAjustes).forEach(nombre => registrar(nombre));
+
+            const dataFechas = snapFechas.val() || {};
+            Object.keys(dataFechas).forEach(fechaKey => {
+              const hazanas = (dataFechas[fechaKey] || {}).hazanas || {};
+              Object.keys(hazanas).forEach(id => registrar(hazanas[id].jugador));
+            });
+
+            const yaEnCatalogo = new Set(Object.keys(catalogoJugadoresDict).map(id => catalogoJugadoresDict[id].nombre.toLowerCase()));
+            const nuevos = Object.keys(nombresEncontrados)
+              .filter(key => !yaEnCatalogo.has(key))
+              .map(key => nombresEncontrados[key]);
+
+            if (nuevos.length === 0) {
+              ocultarGuardando();
+              mostrarAlerta('No se encontraron jugadores nuevos por agregar. El catálogo ya está al día.');
+              return;
+            }
+
+            const updates = {};
+            nuevos.forEach(nombre => {
+              const newRef = db.ref('catalogo_jugadores').push();
+              updates[newRef.key] = { nombre: nombre };
+            });
+
+            db.ref('catalogo_jugadores').update(updates).then(() => {
+              ocultarGuardando();
+              mostrarAlerta(`¡Migración completa! Se agregaron ${nuevos.length} jugador(es) nuevo(s) al catálogo.`);
+            });
+          });
+        });
+      });
+    }
 
     let catalogoHazanasDict = {};
 
@@ -1907,6 +2090,7 @@
     window.onload = function() {
       initCatalogoFechas();
       initCatalogoHazanas();
+      initCatalogoJugadores();
     };
   </script>
 </body>
