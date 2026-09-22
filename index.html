@@ -412,6 +412,13 @@
 
     <!-- PESTAÑA 3: CATÁLOGO DE JUGADORES -->
     <div id="tab-jugadores" class="tab-content">
+      <div class="card" style="border-color: #2e7d32;">
+        <h2>✅ Agregar al Pase de Lista</h2>
+        <p style="font-size: 0.8rem; color: #aaa;">Marca a los jugadores que ya se inscribieron y pagaron para esta jornada, y agrégalos de un jalón al Pase de Lista de la fecha activa. Quedan pendientes de check-in (ausentes) hasta que lleguen al venue.</p>
+        <p id="fechaDestinoJugadoresLabel" style="font-size: 0.85rem; font-weight: bold; color: #66bb6a;">Cargando fecha activa...</p>
+        <button class="add-btn" onclick="agregarJugadoresSeleccionadosAFecha()">➕ Agregar Seleccionados a esta Fecha</button>
+      </div>
+
       <div class="card">
         <h2>👥 Catálogo de Jugadores</h2>
         <p style="font-size: 0.8rem; color: #aaa;">Lista de jugadores conocidos de la liga. Se usa para sugerir nombres al pre-registrarse y evitar duplicados por error de tipeo. <strong>No se borra al resetear la liga a 0</strong> — es información permanente, independiente de cada temporada.</p>
@@ -813,6 +820,8 @@
       if (tabName === 'standings') {
         loadStandings();
         loadSalonFama();
+      } else if (tabName === 'jugadores') {
+        refrescarEstadoSeleccionJugadores();
       }
     }
 
@@ -1368,7 +1377,11 @@
           ids.sort((a, b) => data[a].nombre.localeCompare(data[b].nombre)).forEach(id => {
             const li = document.createElement('li');
             li.innerHTML = `
-              <span>${data[id].nombre}</span>
+              <label style="display:flex; align-items:center; gap:10px; flex:1; min-width:0; cursor:pointer; margin:0;">
+                <input type="checkbox" class="jugadorCatalogoCheckbox" value="${escapeAttr(data[id].nombre)}" style="width:auto;">
+                <span>${data[id].nombre}</span>
+                <span class="status-badge jugadorYaEnFechaBadge" data-nombre-lower="${escapeAttr(data[id].nombre.toLowerCase())}" style="display:none; background:#333; color:#ccc;">Ya en esta fecha</span>
+              </label>
               <div class="player-actions">
                 <button class="icon-btn" title="Editar" onclick="editarJugadorCatalogo('${id}', '${escapeAttr(data[id].nombre)}')">✏️</button>
                 <button class="icon-btn danger" title="Eliminar" onclick="eliminarJugadorCatalogo('${id}', '${escapeAttr(data[id].nombre)}')">🗑️</button>
@@ -1384,6 +1397,82 @@
           const opt = document.createElement('option');
           opt.value = data[id].nombre;
           datalist.appendChild(opt);
+        });
+
+        refrescarEstadoSeleccionJugadores();
+      });
+    }
+
+    // Marca (deshabilita + insignia) a los jugadores del catálogo que ya están
+    // en el Pase de Lista de la fecha activa, y actualiza el rótulo de la fecha destino.
+    function refrescarEstadoSeleccionJugadores() {
+      const label = document.getElementById('fechaDestinoJugadoresLabel');
+      if (!label) return; // la pestaña de Jugadores aún no se ha renderizado
+
+      if (!currentFecha) {
+        label.textContent = 'No hay ninguna fecha activa todavía.';
+        document.querySelectorAll('.jugadorCatalogoCheckbox').forEach(cb => { cb.disabled = true; cb.checked = false; });
+        document.querySelectorAll('.jugadorYaEnFechaBadge').forEach(b => b.style.display = 'none');
+        return;
+      }
+
+      const nombreFecha = catalogoFechasDict[currentFecha] ? catalogoFechasDict[currentFecha].nombre : currentFecha;
+      label.textContent = `Se agregarán al Pase de Lista de: ${nombreFecha}`;
+
+      db.ref(`asistencia/${currentFecha}`).once('value').then(snapshot => {
+        const data = snapshot.val() || {};
+        const yaRegistrados = new Set(Object.keys(data).map(id => (data[id].name || '').toLowerCase()));
+
+        document.querySelectorAll('#catalogoJugadoresList li').forEach(li => {
+          const checkbox = li.querySelector('.jugadorCatalogoCheckbox');
+          const badge = li.querySelector('.jugadorYaEnFechaBadge');
+          if (!checkbox || !badge) return;
+          const yaEsta = yaRegistrados.has(badge.dataset.nombreLower);
+          checkbox.disabled = yaEsta;
+          if (yaEsta) checkbox.checked = false;
+          badge.style.display = yaEsta ? 'inline-block' : 'none';
+        });
+      });
+    }
+
+    function agregarJugadoresSeleccionadosAFecha() {
+      checkAdminAuth(() => {
+        if (!currentFecha) return mostrarAlerta('No hay ninguna fecha activa. Crea o selecciona una fecha primero en "📅 Fecha Actual".');
+
+        const seleccionados = Array.from(document.querySelectorAll('.jugadorCatalogoCheckbox:checked')).map(cb => cb.value);
+        if (seleccionados.length === 0) return mostrarAlerta('Selecciona al menos un jugador.');
+
+        const nombreFecha = catalogoFechasDict[currentFecha] ? catalogoFechasDict[currentFecha].nombre : currentFecha;
+        mostrarConfirm(`¿Agregar ${seleccionados.length} jugador(es) al Pase de Lista de ${nombreFecha}? Quedarán pendientes de check-in (ausentes) hasta que lleguen al venue.`, (aceptado) => {
+          if (!aceptado) return;
+
+          mostrarGuardando();
+          db.ref(`asistencia/${currentFecha}`).once('value').then(snapshot => {
+            const data = snapshot.val() || {};
+            const yaRegistrados = new Set(Object.keys(data).map(id => (data[id].name || '').toLowerCase()));
+
+            const updates = {};
+            let agregados = 0;
+            seleccionados.forEach(nombre => {
+              if (yaRegistrados.has(nombre.toLowerCase())) return; // por si se seleccionó justo antes de que se deshabilitara
+              const newRef = db.ref(`asistencia/${currentFecha}`).push();
+              updates[newRef.key] = { name: nombre, present: false };
+              agregados++;
+            });
+
+            if (agregados === 0) {
+              ocultarGuardando();
+              mostrarAlerta('Los jugadores seleccionados ya estaban en el Pase de Lista de esta fecha.');
+              refrescarEstadoSeleccionJugadores();
+              return;
+            }
+
+            db.ref(`asistencia/${currentFecha}`).update(updates).then(() => {
+              ocultarGuardando();
+              mostrarAlerta(`¡${agregados} jugador(es) agregado(s) al Pase de Lista de ${nombreFecha}!`);
+              refrescarEstadoSeleccionJugadores();
+            });
+          });
         });
       });
     }
