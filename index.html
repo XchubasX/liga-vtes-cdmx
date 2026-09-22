@@ -250,6 +250,7 @@
         <h2>6. Finalizar Jornada Completa</h2>
         <p style="font-size: 0.8rem; color: #aaa;">Al cerrar la fecha, los puntos acumulados de TODAS las rondas jugadas en esta fecha se computarán de forma definitiva en la Tabla General.</p>
         <button id="closeFechaBtn" class="close-btn" onclick="cerrarFechaYComputar()">🔒 Cerrar Fecha (Computar R1 + R2)</button>
+        <button id="exportCsvBtn" class="secondary" onclick="exportarFechaCSV()" style="display:none;">📥 Exportar Fecha a CSV</button>
       </div>
 
       <!-- 7. Hazañas y Menciones -->
@@ -304,6 +305,9 @@
       <!-- Salón de la Fama -->
       <div class="card">
         <h2>🏅 Salón de la Fama</h2>
+        <h4 style="margin: 0 0 8px 0; font-size: 0.85rem; color: #aaa;">🏆 Campeones por Categoría</h4>
+        <div id="campeonesHazanaBox"><em>Calculando campeones...</em></div>
+        <h4 style="margin: 18px 0 8px 0; font-size: 0.85rem; color: #aaa;">Historial Completo</h4>
         <div id="salonFamaList"><em>Cargando hazañas...</em></div>
       </div>
 
@@ -654,7 +658,8 @@
         const closeBtn = document.getElementById('closeFechaBtn');
         const reabrirBtn = document.getElementById('reabrirFechaBtn');
         const rankingNota = document.getElementById('rankingEstadoNota');
-        
+        const exportBtn = document.getElementById('exportCsvBtn');
+
         if (isClosed) {
           badge.textContent = "CERRADA";
           badge.className = "status-badge badge-closed";
@@ -662,6 +667,7 @@
           closeBtn.style.opacity = "0.5";
           closeBtn.textContent = "🔒 Fecha Cerrada y Computada";
           reabrirBtn.style.display = 'block';
+          exportBtn.style.display = 'block';
           rankingNota.className = "ranking-note final";
           rankingNota.textContent = "✅ Fecha cerrada — estos valores ya fueron computados a la Tabla General.";
         } else {
@@ -671,6 +677,7 @@
           closeBtn.style.opacity = "1";
           closeBtn.textContent = "🔒 Cerrar Fecha (Computar R1 + R2)";
           reabrirBtn.style.display = 'none';
+          exportBtn.style.display = 'none';
           rankingNota.className = "ranking-note provisional";
           rankingNota.textContent = "⏱ Ranking en vivo — se computará de forma definitiva al cerrar la fecha.";
         }
@@ -1249,15 +1256,42 @@
       db.ref('fechas').once('value').then(snapshot => {
         const fechasData = snapshot.val() || {};
         let registros = [];
+        let conteoPorHazana = {}; // { nombreHazana: { jugador: veces } }
 
         Object.keys(fechasData).forEach(fechaKey => {
           const hazanas = fechasData[fechaKey].hazanas || {};
           Object.keys(hazanas).forEach(id => {
             const h = hazanas[id];
             registros.push({ fechaKey: fechaKey, hazana: h.hazana, jugador: h.jugador, nota: h.nota || '' });
+
+            if (!conteoPorHazana[h.hazana]) conteoPorHazana[h.hazana] = {};
+            if (!conteoPorHazana[h.hazana][h.jugador]) conteoPorHazana[h.hazana][h.jugador] = 0;
+            conteoPorHazana[h.hazana][h.jugador] += 1;
           });
         });
 
+        // --- Campeones por categoría ---
+        const campeonesBox = document.getElementById('campeonesHazanaBox');
+        const tiposHazana = Object.keys(conteoPorHazana).sort((a, b) => a.localeCompare(b));
+
+        if (tiposHazana.length === 0) {
+          campeonesBox.innerHTML = '<em>Aún no hay hazañas otorgadas para calcular campeones.</em>';
+        } else {
+          const ulCampeones = document.createElement('ul');
+          tiposHazana.forEach(hazanaNombre => {
+            const jugadoresConteo = conteoPorHazana[hazanaNombre];
+            const maxVeces = Math.max(...Object.values(jugadoresConteo));
+            const campeones = Object.keys(jugadoresConteo).filter(j => jugadoresConteo[j] === maxVeces);
+            const vecesTxt = maxVeces === 1 ? 'vez' : 'veces';
+            const li = document.createElement('li');
+            li.innerHTML = `<span>🏆 <strong>${hazanaNombre}</strong> → ${campeones.join(', ')}</span> <span class="status-badge" style="background:#333; color:#ccc;">${maxVeces} ${vecesTxt}</span>`;
+            ulCampeones.appendChild(li);
+          });
+          campeonesBox.innerHTML = '';
+          campeonesBox.appendChild(ulCampeones);
+        }
+
+        // --- Historial cronológico completo ---
         const box = document.getElementById('salonFamaList');
         if (registros.length === 0) {
           box.innerHTML = '<em>Aún no se han otorgado hazañas en la liga.</em>';
@@ -1284,6 +1318,81 @@
     }
 
     // ==================== FIN HAZAÑAS Y MENCIONES ====================
+
+    // ==================== EXPORTAR FECHA A CSV ====================
+
+    function exportarFechaCSV() {
+      db.ref(`fechas/${currentFecha}`).once('value').then(snapshot => {
+        const data = snapshot.val() || {};
+        if (data.estado !== "CERRADA") {
+          return alert("Solo se pueden exportar fechas ya CERRADAS.");
+        }
+
+        const rondas = data.rondas || {};
+        const nombreFecha = catalogoFechasDict[currentFecha] ? catalogoFechasDict[currentFecha].nombre : currentFecha;
+
+        let filas = [];
+        filas.push(['Ronda', 'Mesa', 'Jugador', 'VP', 'Gano_Mesa_GW']);
+
+        Object.keys(rondas).sort().forEach(rondaKey => {
+          const rondaLabel = rondaKey === 'ronda_1' ? 'Ronda 1' : (rondaKey === 'ronda_2' ? 'Ronda 2' : rondaKey);
+          const mesas = rondas[rondaKey].mesas || [];
+
+          mesas.forEach((mesa, tIndex) => {
+            const jugadores = mesa.jugadores || [];
+            let maxVP = -1, winnersCount = 0;
+
+            jugadores.forEach(j => {
+              if (j.vp > maxVP) { maxVP = j.vp; winnersCount = 1; }
+              else if (j.vp === maxVP) { winnersCount++; }
+            });
+
+            jugadores.forEach(j => {
+              const gano = (maxVP > 0 && j.vp === maxVP && winnersCount === 1) ? 'Si' : 'No';
+              filas.push([rondaLabel, `Mesa ${tIndex + 1}`, j.name, j.vp, gano]);
+            });
+          });
+        });
+
+        filas.push([]);
+        filas.push([`Hazañas y Menciones de ${nombreFecha}`]);
+        filas.push(['Jugador', 'Hazaña', 'Nota']);
+
+        const hazanas = data.hazanas || {};
+        const hazanaIds = Object.keys(hazanas);
+        if (hazanaIds.length === 0) {
+          filas.push(['(Sin hazañas otorgadas en esta fecha)']);
+        } else {
+          hazanaIds.forEach(id => {
+            const h = hazanas[id];
+            filas.push([h.jugador, h.hazana, h.nota || '']);
+          });
+        }
+
+        const escaparCampoCSV = (campo) => {
+          const texto = String(campo === undefined || campo === null ? '' : campo);
+          if (texto.includes(',') || texto.includes('"') || texto.includes('\n')) {
+            return '"' + texto.replace(/"/g, '""') + '"';
+          }
+          return texto;
+        };
+
+        const csvContent = filas.map(fila => fila.map(escaparCampoCSV).join(',')).join('\r\n');
+
+        // BOM al inicio para que Excel detecte UTF-8 y muestre bien los acentos
+        const blob = new Blob(["﻿" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${nombreFecha.replace(/\s+/g, '_')}_resultados.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    // ==================== FIN EXPORTAR FECHA A CSV ====================
 
     function renderTables(tables, isClosed) {
       const output = document.getElementById('tablesOutput');
