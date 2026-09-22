@@ -104,6 +104,7 @@
   <!-- Firebase Compatibility Libraries -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js"></script>
 </head>
 <body>
 
@@ -362,6 +363,19 @@
     };
 
     firebase.initializeApp(firebaseConfig);
+
+    // ⚠️ App Check: protege la base de datos contra escrituras que no vengan de este sitio.
+    // Reemplaza "6Lc-YsgtAAAAAD-FWUzY0TUwgRRqVum-Q2CTXpR3" con la "clave de sitio" (Site Key)
+    // de tu registro en google.com/recaptcha/admin (tipo "Validación por calificación" / v3)
+    // y regístrala también en Firebase Console (Build > App Check, proveedor reCAPTCHA v3).
+    // NUNCA pongas aquí la "clave secreta" (Secret Key) — esa no va en el HTML.
+    // Sin esto configurado correctamente y con el enforcement activado en la consola,
+    // Firebase seguirá aceptando todas las solicitudes.
+    firebase.appCheck().activate(
+      "PEGA_AQUI_TU_SITE_KEY_DE_RECAPTCHA_V3",
+      true // refresca el token automáticamente
+    );
+
     const db = firebase.database();
 
     // CONTRASEÑA DE ADMINISTRADOR
@@ -893,14 +907,14 @@
         const confirmacion1 = confirm("⚠️ ¿ESTÁS SEGURO DE RESETEAR TODO A 0?\n\nEsta acción borrará todas las fechas, asistencias, mesas de juego y la Tabla General de Standings.");
         if (!confirmacion1) return;
 
-        promptPassword("Escribe 'RESET' (en mayúsculas) o la contraseña de Admin para confirmar:", (val) => {
-          if (val === "RESET" || val === ADMIN_PIN) {
+        promptPassword("Ingresa la contraseña de Admin para confirmar el reseteo total:", (val) => {
+          if (val === ADMIN_PIN) {
             db.ref().remove().then(() => {
               alert("💥 Se ha reseteado la base de datos completa a 0.");
               location.reload();
             });
           } else if (val !== null) {
-            alert("Confirmación incorrecta. Operación cancelada.");
+            alert("Contraseña incorrecta. Operación cancelada.");
           }
         });
       });
