@@ -483,6 +483,22 @@
       return nombre.replace(/\s+/g, ' ').trim();
     }
 
+    // Agrupar puntos de un mismo jugador aunque se haya escrito con
+    // distintas mayúsculas/minúsculas entre una fecha y otra (ej. "Fede" vs "fede").
+    // Usa el Catálogo de Jugadores como fuente de la grafía "oficial" de cada nombre.
+    function mapaCanonicoJugadores() {
+      const mapa = {};
+      Object.keys(catalogoJugadoresDict).forEach(id => {
+        const nombre = catalogoJugadoresDict[id].nombre;
+        mapa[nombre.toLowerCase()] = nombre;
+      });
+      return mapa;
+    }
+
+    function nombreCanonico(nombre, mapa) {
+      return mapa[(nombre || '').toLowerCase()] || nombre;
+    }
+
     // Función auxiliar para escapar comillas simples en atributos onclick
     function escapeAttr(str) {
       return String(str).replace(/'/g, "\\'");
@@ -1651,16 +1667,18 @@
         const fechasData = snapshot.val() || {};
         let registros = [];
         let conteoPorHazana = {}; // { nombreHazana: { jugador: veces } }
+        const mapaCanonico = mapaCanonicoJugadores();
 
         Object.keys(fechasData).forEach(fechaKey => {
           const hazanas = fechasData[fechaKey].hazanas || {};
           Object.keys(hazanas).forEach(id => {
             const h = hazanas[id];
-            registros.push({ fechaKey: fechaKey, hazana: h.hazana, jugador: h.jugador, nota: h.nota || '' });
+            const jugadorCanonico = nombreCanonico(h.jugador, mapaCanonico);
+            registros.push({ fechaKey: fechaKey, hazana: h.hazana, jugador: jugadorCanonico, nota: h.nota || '' });
 
             if (!conteoPorHazana[h.hazana]) conteoPorHazana[h.hazana] = {};
-            if (!conteoPorHazana[h.hazana][h.jugador]) conteoPorHazana[h.hazana][h.jugador] = 0;
-            conteoPorHazana[h.hazana][h.jugador] += 1;
+            if (!conteoPorHazana[h.hazana][jugadorCanonico]) conteoPorHazana[h.hazana][jugadorCanonico] = 0;
+            conteoPorHazana[h.hazana][jugadorCanonico] += 1;
           });
         });
 
@@ -1984,27 +2002,30 @@
       db.ref('resumen_fechas').once('value').then(snapshot => {
         const data = snapshot.val() || {};
         let standings = {};
+        const mapaCanonico = mapaCanonicoJugadores();
 
         Object.keys(data).forEach(fechaKey => {
           const jugadoresFecha = data[fechaKey] || {};
-          Object.keys(jugadoresFecha).forEach(playerName => {
+          Object.keys(jugadoresFecha).forEach(playerNameRaw => {
+            const playerName = nombreCanonico(playerNameRaw, mapaCanonico);
             if (!standings[playerName]) {
               standings[playerName] = { gw: 0, vp: 0, fechasJugadas: 0 };
             }
-            standings[playerName].gw += jugadoresFecha[playerName].gw || 0;
-            standings[playerName].vp += jugadoresFecha[playerName].vp || 0;
+            standings[playerName].gw += jugadoresFecha[playerNameRaw].gw || 0;
+            standings[playerName].vp += jugadoresFecha[playerNameRaw].vp || 0;
             standings[playerName].fechasJugadas += 1;
           });
         });
 
         db.ref('ajustes_manuales').once('value').then(snapManual => {
           const manualData = snapManual.val() || {};
-          Object.keys(manualData).forEach(playerName => {
+          Object.keys(manualData).forEach(playerNameRaw => {
+            const playerName = nombreCanonico(playerNameRaw, mapaCanonico);
             if (!standings[playerName]) {
               standings[playerName] = { gw: 0, vp: 0, fechasJugadas: 0 };
             }
-            standings[playerName].gw += manualData[playerName].gw || 0;
-            standings[playerName].vp += manualData[playerName].vp || 0;
+            standings[playerName].gw += manualData[playerNameRaw].gw || 0;
+            standings[playerName].vp += manualData[playerNameRaw].vp || 0;
           });
 
           renderStandingsTable(standings);
