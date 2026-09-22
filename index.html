@@ -365,14 +365,15 @@
     firebase.initializeApp(firebaseConfig);
 
     // ⚠️ App Check: protege la base de datos contra escrituras que no vengan de este sitio.
-    // Reemplaza "6Lc-YsgtAAAAAD-FWUzY0TUwgRRqVum-Q2CTXpR3" con la "clave de sitio" (Site Key)
-    // de tu registro en google.com/recaptcha/admin (tipo "Validación por calificación" / v3)
-    // y regístrala también en Firebase Console (Build > App Check, proveedor reCAPTCHA v3).
+    // Reemplaza "PEGA_AQUI_TU_SITE_KEY_DE_RECAPTCHA" con la "clave de sitio" (Site Key) de tu
+    // registro en google.com/recaptcha/admin, y regístrala también en Firebase Console
+    // (Build > App Check). Usamos el proveedor "Enterprise" porque, a partir de la
+    // migración de Google (completada en 2026), toda llave de reCAPTCHA —aunque se haya
+    // creado en la página clásica— corre por debajo sobre el backend de reCAPTCHA
+    // Enterprise; el proveedor clásico "reCAPTCHA v3" ya no valida correctamente esas llaves.
     // NUNCA pongas aquí la "clave secreta" (Secret Key) — esa no va en el HTML.
-    // Sin esto configurado correctamente y con el enforcement activado en la consola,
-    // Firebase seguirá aceptando todas las solicitudes.
     firebase.appCheck().activate(
-      "PEGA_AQUI_TU_SITE_KEY_DE_RECAPTCHA_V3",
+      new firebase.appCheck.ReCaptchaEnterpriseProvider("6Lc-YsgtAAAAAD-FWUzY0TUwgRRqVum-Q2CTXpR3"),
       true // refresca el token automáticamente
     );
 
