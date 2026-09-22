@@ -60,7 +60,16 @@
     .badge-bye { background: #6a1b9a; color: #e1bee7; }
     
     .vp-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; background: #1e1e1e; padding: 6px 10px; border-radius: 4px; }
-    
+
+    /* Ajuste dirigido para pantallas pequeñas: mesas y captura de VP */
+    @media (max-width: 480px) {
+      .table-box { padding: 10px 8px; }
+      .vp-row { flex-direction: column; align-items: stretch; gap: 6px; padding: 10px; }
+      .vp-row > span { font-size: 0.95rem; }
+      .vp-row > div { display: flex; justify-content: space-between; align-items: center; }
+      .vp-row input[type="number"] { width: 90px; height: 34px; font-size: 1rem; }
+    }
+
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95rem; }
     th, td { padding: 10px; text-align: center; border-bottom: 1px solid #333; }
     th { background: #2a2a2a; color: #ef5350; }
@@ -344,10 +353,11 @@
               <th style="text-align: left;">Jugador</th>
               <th>GW</th>
               <th>VP</th>
+              <th>Fechas Jugadas</th>
             </tr>
           </thead>
           <tbody id="standingsTable">
-            <tr><td colspan="4">Cargando datos de la liga...</td></tr>
+            <tr><td colspan="5">Cargando datos de la liga...</td></tr>
           </tbody>
         </table>
       </div>
@@ -414,13 +424,13 @@
     firebase.initializeApp(firebaseConfig);
 
     // ⚠️ App Check: protege la base de datos contra escrituras que no vengan de este sitio.
-    // Reemplaza "PEGA_AQUI_TU_SITE_KEY_DE_RECAPTCHA" con la "clave de sitio" (Site Key) de tu
-    // registro en google.com/recaptcha/admin, y regístrala también en Firebase Console
-    // (Build > App Check). Usamos el proveedor "Enterprise" porque, a partir de la
-    // migración de Google (completada en 2026), toda llave de reCAPTCHA —aunque se haya
-    // creado en la página clásica— corre por debajo sobre el backend de reCAPTCHA
-    // Enterprise; el proveedor clásico "reCAPTCHA v3" ya no valida correctamente esas llaves.
-    // NUNCA pongas aquí la "clave secreta" (Secret Key) — esa no va en el HTML.
+    // Esta es la Site Key registrada en google.com/recaptcha/admin y en Firebase Console
+    // (Build > App Check, proveedor reCAPTCHA Enterprise). Usamos el proveedor "Enterprise"
+    // porque, a partir de la migración de Google (completada en 2026), toda llave de
+    // reCAPTCHA —aunque se haya creado en la página clásica— corre por debajo sobre el
+    // backend de reCAPTCHA Enterprise; el proveedor clásico "reCAPTCHA v3" ya no valida
+    // correctamente esas llaves. NUNCA pongas aquí la "clave secreta" (Secret Key) — esa
+    // no va en el HTML (la Site Key sí es pública y puede estar visible en el código).
     firebase.appCheck().activate(
       new firebase.appCheck.ReCaptchaEnterpriseProvider("6Lc-YsgtAAAAAD-FWUzY0TUwgRRqVum-Q2CTXpR3"),
       true // refresca el token automáticamente
@@ -692,8 +702,11 @@
           return mostrarAlerta(`El día elegido (${formatearFechaDDMMAAAA(dateInput)}) debe ser posterior al día más reciente ya registrado en la liga (${formatearFechaDDMMAAAA(maxFechaExistente)}).`);
         }
 
+        mostrarGuardando();
+
         if (modoFormFecha === "editar") {
           db.ref(`catalogo_fechas/${currentFecha}/fecha_calendario`).set(dateInput).then(() => {
+            ocultarGuardando();
             document.getElementById('nuevaFechaForm').style.display = 'none';
             mostrarAlerta("¡Día de jornada actualizado con éxito!");
           });
@@ -722,6 +735,7 @@
             document.getElementById('newFechaDate').value = '';
 
             if (!prevKey) {
+              ocultarGuardando();
               mostrarAlerta(`¡${nuevaData.nombre} creada correctamente!`);
               return;
             }
@@ -733,6 +747,7 @@
                 .map(id => prevData[id].name);
 
               if (presentes.length === 0) {
+                ocultarGuardando();
                 mostrarAlerta(`¡${nuevaData.nombre} creada correctamente!`);
                 return;
               }
@@ -744,6 +759,7 @@
               });
 
               db.ref(`asistencia/${keyFecha}`).update(updates).then(() => {
+                ocultarGuardando();
                 mostrarAlerta(`¡${nuevaData.nombre} creada correctamente! Se copiaron ${presentes.length} jugador(es) de la fecha anterior al Pase de Lista (marcados como ausentes hasta que lleguen).`);
               });
             });
@@ -909,13 +925,16 @@
       const checkbox = document.getElementById('selectAllPresentCheckbox');
 
       const aplicar = () => {
+        mostrarGuardando();
         db.ref(`asistencia/${currentFecha}`).once('value').then(snap => {
           const data = snap.val() || {};
           const updates = {};
           Object.keys(data).forEach(id => {
             updates[`${id}/present`] = checked;
           });
-          db.ref(`asistencia/${currentFecha}`).update(updates);
+          db.ref(`asistencia/${currentFecha}`).update(updates).then(() => {
+            ocultarGuardando();
+          });
         });
       };
 
@@ -943,6 +962,7 @@
       const name = sanearNombre(input.value);
       if (!name) return mostrarAlerta('Ingresa un nombre.');
 
+      mostrarGuardando();
       db.ref(`asistencia/${currentFecha}`).once('value').then(snapshot => {
         const data = snapshot.val() || {};
         let yaExiste = false;
@@ -953,12 +973,14 @@
         });
 
         if (yaExiste) {
+          ocultarGuardando();
           mostrarAlerta('Este jugador ya está registrado en esta fecha.');
           input.value = '';
           return;
         }
 
         db.ref(`asistencia/${currentFecha}`).push({ name: name, present: false }).then(() => {
+          ocultarGuardando();
           mostrarAlerta('¡Te has pre-registrado con éxito!');
           input.value = '';
         });
@@ -1125,7 +1147,9 @@
               idx += 4;
             }
 
+            mostrarGuardando();
             db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas`).set(tables).then(() => {
+              ocultarGuardando();
               mostrarAlerta("¡Sorteo de mesas realizado con éxito!");
             });
           });
@@ -1353,7 +1377,9 @@
         const yaExiste = Object.keys(catalogoHazanasDict).some(id => catalogoHazanasDict[id].nombre.toLowerCase() === nombre.toLowerCase());
         if (yaExiste) return mostrarAlerta('Esa hazaña ya existe en el catálogo.');
 
+        mostrarGuardando();
         db.ref('catalogo_hazanas').push({ nombre: nombre }).then(() => {
+          ocultarGuardando();
           input.value = '';
         });
       });
@@ -1369,7 +1395,8 @@
           const duplicado = Object.keys(catalogoHazanasDict).some(otherId => otherId !== id && catalogoHazanasDict[otherId].nombre.toLowerCase() === nuevo.toLowerCase());
           if (duplicado) return mostrarAlerta('Ya existe otra hazaña con ese nombre en el catálogo.');
 
-          db.ref(`catalogo_hazanas/${id}`).update({ nombre: nuevo });
+          mostrarGuardando();
+          db.ref(`catalogo_hazanas/${id}`).update({ nombre: nuevo }).then(() => ocultarGuardando());
         });
       });
     }
@@ -1378,7 +1405,8 @@
       checkAdminAuth(() => {
         mostrarConfirm(`¿Eliminar "${nombre}" del catálogo de hazañas? Las hazañas ya otorgadas con este nombre no se verán afectadas.`, (aceptado) => {
           if (!aceptado) return;
-          db.ref(`catalogo_hazanas/${id}`).remove();
+          mostrarGuardando();
+          db.ref(`catalogo_hazanas/${id}`).remove().then(() => ocultarGuardando());
         });
       });
     }
@@ -1394,8 +1422,10 @@
         if (!jugador) return mostrarAlerta('Selecciona un jugador.');
 
         const guardarHazana = (nombreHazana) => {
+          mostrarGuardando();
           const nuevaRef = db.ref(`fechas/${currentFecha}/hazanas`).push();
           nuevaRef.set({ hazana: nombreHazana, jugador: jugador, nota: nota }).then(() => {
+            ocultarGuardando();
             mostrarAlerta(`¡Hazaña "${nombreHazana}" otorgada a ${jugador}!`);
             notaInput.value = '';
           });
@@ -1409,7 +1439,9 @@
           if (existenteId) {
             guardarHazana(catalogoHazanasDict[existenteId].nombre);
           } else {
+            mostrarGuardando();
             db.ref('catalogo_hazanas').push({ nombre: nuevoNombre }).then(() => {
+              ocultarGuardando();
               document.getElementById('hazanaTipoNuevoInput').value = '';
               guardarHazana(nuevoNombre);
             });
@@ -1425,7 +1457,8 @@
       checkAdminAuth(() => {
         mostrarConfirm('¿Eliminar esta hazaña de la fecha actual?', (aceptado) => {
           if (!aceptado) return;
-          db.ref(`fechas/${currentFecha}/hazanas/${id}`).remove();
+          mostrarGuardando();
+          db.ref(`fechas/${currentFecha}/hazanas/${id}`).remove().then(() => ocultarGuardando());
         });
       });
     }
@@ -1629,7 +1662,9 @@
           return mostrarAlerta(`❌ ERROR DE REGLAMENTO:\nLa suma de VPs en la Mesa ${tIndex + 1} es ${totalVPInTable}. Una mesa de ${maxAllowedVP} jugadores no puede sumar más de ${maxAllowedVP} VPs.`);
         }
 
+        mostrarGuardando();
         db.ref(`fechas/${currentFecha}/rondas/${currentRonda}/mesas/${tIndex}/jugadores`).set(updatedPlayers).then(() => {
+          ocultarGuardando();
           mostrarAlerta(`¡Mesa ${tIndex + 1} actualizada con éxito!`);
         });
       });
@@ -1771,10 +1806,11 @@
           const jugadoresFecha = data[fechaKey] || {};
           Object.keys(jugadoresFecha).forEach(playerName => {
             if (!standings[playerName]) {
-              standings[playerName] = { gw: 0, vp: 0 };
+              standings[playerName] = { gw: 0, vp: 0, fechasJugadas: 0 };
             }
             standings[playerName].gw += jugadoresFecha[playerName].gw || 0;
             standings[playerName].vp += jugadoresFecha[playerName].vp || 0;
+            standings[playerName].fechasJugadas += 1;
           });
         });
 
@@ -1782,7 +1818,7 @@
           const manualData = snapManual.val() || {};
           Object.keys(manualData).forEach(playerName => {
             if (!standings[playerName]) {
-              standings[playerName] = { gw: 0, vp: 0 };
+              standings[playerName] = { gw: 0, vp: 0, fechasJugadas: 0 };
             }
             standings[playerName].gw += manualData[playerName].gw || 0;
             standings[playerName].vp += manualData[playerName].vp || 0;
@@ -1801,14 +1837,15 @@
       const sortedPlayers = Object.keys(standings).map(name => ({
         name: name,
         gw: standings[name].gw,
-        vp: standings[name].vp
+        vp: standings[name].vp,
+        fechasJugadas: standings[name].fechasJugadas || 0
       })).sort((a, b) => {
         if (b.gw !== a.gw) return b.gw - a.gw;
         return b.vp - a.vp;
       });
 
       if (sortedPlayers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4">Aún no hay registros en la tabla general.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5">Aún no hay registros en la tabla general.</td></tr>`;
         return;
       }
 
@@ -1819,6 +1856,7 @@
           <td class="player-name">${p.name}</td>
           <td>${p.gw}</td>
           <td>${p.vp % 1 === 0 ? p.vp : p.vp.toFixed(1)}</td>
+          <td>${p.fechasJugadas}</td>
         `;
         tbody.appendChild(tr);
       });
@@ -1844,18 +1882,22 @@
         if (!playerName) return mostrarAlerta("Selecciona un jugador.");
         if (deltaGW === 0 && deltaVP === 0) return mostrarAlerta("Ingresa un valor diferente de 0 para GW o VP.");
 
-        if (!confirm(`¿Aplicar ajuste manual a ${playerName}: GW (${deltaGW}), VP (${deltaVP})?`)) return;
+        mostrarConfirm(`¿Aplicar ajuste manual a ${playerName}: GW (${deltaGW}), VP (${deltaVP})?`, (aceptado) => {
+          if (!aceptado) return;
 
-        db.ref(`ajustes_manuales/${playerName}`).once('value').then(snap => {
-          const current = snap.val() || { gw: 0, vp: 0 };
-          const nuevoGW = current.gw + deltaGW;
-          const nuevoVP = current.vp + deltaVP;
+          mostrarGuardando();
+          db.ref(`ajustes_manuales/${playerName}`).once('value').then(snap => {
+            const current = snap.val() || { gw: 0, vp: 0 };
+            const nuevoGW = current.gw + deltaGW;
+            const nuevoVP = current.vp + deltaVP;
 
-          db.ref(`ajustes_manuales/${playerName}`).set({ gw: nuevoGW, vp: nuevoVP }).then(() => {
-            mostrarAlerta("Ajuste manual aplicado correctamente.");
-            document.getElementById('adminDeltaGW').value = "0";
-            document.getElementById('adminDeltaVP').value = "0";
-            loadStandings();
+            db.ref(`ajustes_manuales/${playerName}`).set({ gw: nuevoGW, vp: nuevoVP }).then(() => {
+              ocultarGuardando();
+              mostrarAlerta("Ajuste manual aplicado correctamente.");
+              document.getElementById('adminDeltaGW').value = "0";
+              document.getElementById('adminDeltaVP').value = "0";
+              loadStandings();
+            });
           });
         });
       });
