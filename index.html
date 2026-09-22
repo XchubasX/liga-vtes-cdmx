@@ -1742,7 +1742,7 @@
             });
 
             jugadores.forEach(j => {
-              const gano = (maxVP > 0 && j.vp === maxVP && winnersCount === 1) ? 'Si' : 'No';
+              const gano = (maxVP >= 2 && j.vp === maxVP && winnersCount === 1) ? 'Si' : 'No';
               filas.push([rondaLabel, `Mesa ${tIndex + 1}`, j.name, j.vp, gano]);
             });
           });
@@ -1881,7 +1881,7 @@
             }
             rankingFecha[j.name].vp += j.vp;
 
-            if (maxVP > 0 && j.vp === maxVP && winnersCount === 1) {
+            if (maxVP >= 2 && j.vp === maxVP && winnersCount === 1) {
               rankingFecha[j.name].gw += 1;
             }
           });
@@ -1963,7 +1963,7 @@
                 }
                 resumenFecha[j.name].vp += j.vp;
 
-                if (maxVP > 0 && j.vp === maxVP && winnersCount === 1) {
+                if (maxVP >= 2 && j.vp === maxVP && winnersCount === 1) {
                   resumenFecha[j.name].gw += 1;
                 }
               });
