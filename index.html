@@ -183,6 +183,10 @@
           <button class="warning-btn" onclick="resetPaseDeLista()" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">🧹 Reset Pase de Lista</button>
         </h2>
         <p style="font-size: 0.8rem; color: #aaa;">Marca la casilla únicamente cuando el jugador LLEGUE FÍSICAMENTE (Requiere Admin). Usa ✏️ para corregir un nombre mal escrito o 🗑️ para eliminarlo de esta fecha.</p>
+        <label class="checkbox-label" style="margin-bottom: 10px; padding: 8px 12px; background: #242424; border-radius: 4px;">
+          <input type="checkbox" id="selectAllPresentCheckbox" onchange="toggleSeleccionarTodosPresentes(this.checked)">
+          <strong>Seleccionar / Deseleccionar todos</strong>
+        </label>
         <ul id="playerList"></ul>
       </div>
 
@@ -248,6 +252,34 @@
         <button id="closeFechaBtn" class="close-btn" onclick="cerrarFechaYComputar()">🔒 Cerrar Fecha (Computar R1 + R2)</button>
       </div>
 
+      <!-- 7. Hazañas y Menciones -->
+      <div class="card">
+        <h2>
+          <span>🏅 Hazañas y Menciones</span>
+          <button class="secondary" onclick="toggleCatalogoHazanas()" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">⚙️ Catálogo</button>
+        </h2>
+
+        <div id="catalogoHazanasBox" style="display:none; margin-bottom: 15px; background:#212121; border:1px solid #444; padding:10px; border-radius:6px;">
+          <h4 style="margin:0 0 8px 0; font-size:0.9rem; color:#aaa;">Catálogo de Hazañas (editable)</h4>
+          <ul id="catalogoHazanasList"></ul>
+          <div class="fecha-control-row">
+            <input type="text" id="nuevaHazanaCatalogoInput" placeholder="Nueva hazaña (ej. Sangrado más cuantioso)" style="margin-bottom:0; flex:1;">
+            <button class="add-btn" onclick="agregarHazanaCatalogo()" style="width:auto; padding: 8px 14px; margin-top: 0;">➕</button>
+          </div>
+        </div>
+
+        <label style="font-size: 0.8rem; color: #aaa;">Otorgar hazaña de esta fecha:</label>
+        <select id="hazanaTipoSelect" onchange="onHazanaTipoChange()"></select>
+        <input type="text" id="hazanaTipoNuevoInput" placeholder="Escribe el nombre de la nueva hazaña" style="display:none;">
+        <select id="hazanaJugadorSelect">
+          <option value="">Selecciona un jugador...</option>
+        </select>
+        <input type="text" id="hazanaNotaInput" placeholder="Nota / detalle (opcional)">
+        <button class="add-btn" onclick="otorgarHazana()">🏅 Otorgar Hazaña</button>
+
+        <ul id="hazanasFechaList" style="margin-top: 15px;"></ul>
+      </div>
+
     </div>
 
     <!-- PESTAÑA 2: STANDINGS GLOBALES -->
@@ -267,6 +299,12 @@
             <tr><td colspan="4">Cargando datos de la liga...</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Salón de la Fama -->
+      <div class="card">
+        <h2>🏅 Salón de la Fama</h2>
+        <div id="salonFamaList"><em>Cargando hazañas...</em></div>
       </div>
 
       <!-- Panel de Corrección Excepcional (Protegido por Admin) -->
@@ -354,6 +392,18 @@
     // Función auxiliar para escapar comillas simples en atributos onclick
     function escapeAttr(str) {
       return String(str).replace(/'/g, "\\'");
+    }
+
+    // Función auxiliar: devuelve la fecha de calendario (ISO) más reciente entre
+    // todas las fechas del catálogo, excluyendo opcionalmente una key (para edición)
+    function obtenerFechaCalendarioMasReciente(excludeKey) {
+      let maxFecha = null;
+      Object.keys(catalogoFechasDict).forEach(key => {
+        if (key === excludeKey) return;
+        const f = catalogoFechasDict[key].fecha_calendario;
+        if (f && (!maxFecha || f > maxFecha)) maxFecha = f;
+      });
+      return maxFecha;
     }
 
     function promptPassword(message, callback) {
@@ -482,6 +532,13 @@
         const dateInput = document.getElementById('newFechaDate').value;
         if (!dateInput) return alert("Por favor selecciona un día válido.");
 
+        const excludeKey = modoFormFecha === "editar" ? currentFecha : null;
+        const maxFechaExistente = obtenerFechaCalendarioMasReciente(excludeKey);
+
+        if (maxFechaExistente && dateInput <= maxFechaExistente) {
+          return alert(`El día elegido (${formatearFechaDDMMAAAA(dateInput)}) debe ser posterior al día más reciente ya registrado en la liga (${formatearFechaDDMMAAAA(maxFechaExistente)}).`);
+        }
+
         if (modoFormFecha === "editar") {
           db.ref(`catalogo_fechas/${currentFecha}/fecha_calendario`).set(dateInput).then(() => {
             document.getElementById('nuevaFechaForm').style.display = 'none';
@@ -498,12 +555,45 @@
             fecha_calendario: dateInput
           };
 
+          // Encontrar la fecha inmediata anterior (mayor número menor al nuevo) para copiar asistentes
+          let prevKey = null, maxNumeroPrevio = -1;
+          keys.forEach(k => {
+            const n = catalogoFechasDict[k].numero;
+            if (n < nuevoNumero && n > maxNumeroPrevio) { maxNumeroPrevio = n; prevKey = k; }
+          });
+
           db.ref(`catalogo_fechas/${keyFecha}`).set(nuevaData).then(() => {
             db.ref(`fechas/${keyFecha}/estado`).set("ABIERTA");
             currentFecha = keyFecha;
             document.getElementById('nuevaFechaForm').style.display = 'none';
             document.getElementById('newFechaDate').value = '';
-            alert(`¡${nuevaData.nombre} creada correctamente!`);
+
+            if (!prevKey) {
+              alert(`¡${nuevaData.nombre} creada correctamente!`);
+              return;
+            }
+
+            db.ref(`asistencia/${prevKey}`).once('value').then(snap => {
+              const prevData = snap.val() || {};
+              const presentes = Object.keys(prevData)
+                .filter(id => prevData[id].present)
+                .map(id => prevData[id].name);
+
+              if (presentes.length === 0) {
+                alert(`¡${nuevaData.nombre} creada correctamente!`);
+                return;
+              }
+
+              const updates = {};
+              presentes.forEach(name => {
+                const newRef = db.ref(`asistencia/${keyFecha}`).push();
+                updates[newRef.key] = { name: name, present: false };
+              });
+
+              db.ref(`asistencia/${keyFecha}`).update(updates).then(() => {
+                alert(`¡${nuevaData.nombre} creada correctamente! Se copiaron ${presentes.length} jugador(es) de la fecha anterior al Pase de Lista (marcados como ausentes hasta que lleguen).`);
+              });
+            });
           });
         }
       });
@@ -520,6 +610,7 @@
         document.querySelectorAll('.tab-btn')[1].classList.add('active');
         document.getElementById('tab-standings').classList.add('active');
         loadStandings();
+        loadSalonFama();
       }
     }
 
@@ -596,11 +687,16 @@
         const list = document.getElementById('playerList');
         list.innerHTML = '';
         const data = snapshot.val() || {};
-        
-        Object.keys(data).forEach(id => {
+        const ids = Object.keys(data);
+
+        const jugadorSelect = document.getElementById('hazanaJugadorSelect');
+        const prevSelected = jugadorSelect.value;
+        jugadorSelect.innerHTML = '<option value="">Selecciona un jugador...</option>';
+
+        ids.forEach(id => {
           const player = data[id];
           const li = document.createElement('li');
-          
+
           li.innerHTML = `
             <label class="checkbox-label">
               <input type="checkbox" ${player.present ? 'checked' : ''} onchange="togglePresence('${id}', this.checked)">
@@ -617,7 +713,72 @@
             </div>
           `;
           list.appendChild(li);
+
+          const opt = document.createElement('option');
+          opt.value = player.name;
+          opt.textContent = player.name;
+          jugadorSelect.appendChild(opt);
         });
+
+        if (prevSelected) jugadorSelect.value = prevSelected;
+
+        const selectAllBox = document.getElementById('selectAllPresentCheckbox');
+        selectAllBox.checked = ids.length > 0 && ids.every(id => data[id].present);
+      });
+
+      db.ref(`fechas/${currentFecha}/hazanas`).on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        const ul = document.getElementById('hazanasFechaList');
+        const ids = Object.keys(data);
+
+        if (ids.length === 0) {
+          ul.innerHTML = '<li style="justify-content:center;"><em style="color:#888;">Aún no hay hazañas otorgadas en esta fecha.</em></li>';
+          return;
+        }
+
+        ul.innerHTML = '';
+        ids.forEach(id => {
+          const h = data[id];
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <span>🏅 <strong>${h.hazana}</strong> — ${h.jugador}${h.nota ? ' <em style="color:#aaa;">(' + h.nota + ')</em>' : ''}</span>
+            <button class="icon-btn danger" title="Eliminar" onclick="eliminarHazanaFecha('${id}')">🗑️</button>
+          `;
+          ul.appendChild(li);
+        });
+      });
+    }
+
+    function toggleSeleccionarTodosPresentes(checked) {
+      const checkbox = document.getElementById('selectAllPresentCheckbox');
+
+      const aplicar = () => {
+        db.ref(`asistencia/${currentFecha}`).once('value').then(snap => {
+          const data = snap.val() || {};
+          const updates = {};
+          Object.keys(data).forEach(id => {
+            updates[`${id}/present`] = checked;
+          });
+          db.ref(`asistencia/${currentFecha}`).update(updates);
+        });
+      };
+
+      if (isAdminUnlocked) {
+        aplicar();
+        return;
+      }
+
+      promptPassword("Ingresa la contraseña de Administrador:", (pass) => {
+        if (pass === ADMIN_PIN) {
+          isAdminUnlocked = true;
+          document.getElementById('adminAuthBox').style.display = 'none';
+          document.getElementById('adminControlsBox').style.display = 'block';
+          loadFechaData();
+          aplicar();
+        } else {
+          checkbox.checked = !checked;
+          if (pass !== null) alert("Contraseña incorrecta. Esta acción requiere permisos de Administrador.");
+        }
       });
     }
 
@@ -941,6 +1102,189 @@
 
     // ==================== FIN ARMADO MANUAL ====================
 
+    // ==================== HAZAÑAS Y MENCIONES ====================
+
+    let catalogoHazanasDict = {};
+
+    function initCatalogoHazanas() {
+      db.ref('catalogo_hazanas').on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        catalogoHazanasDict = data;
+
+        const ul = document.getElementById('catalogoHazanasList');
+        ul.innerHTML = '';
+        const ids = Object.keys(data);
+        if (ids.length === 0) {
+          ul.innerHTML = '<li style="justify-content:center;"><em style="color:#888;">Aún no hay hazañas en el catálogo.</em></li>';
+        } else {
+          ids.sort((a, b) => data[a].nombre.localeCompare(data[b].nombre)).forEach(id => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+              <span>${data[id].nombre}</span>
+              <div class="player-actions">
+                <button class="icon-btn" title="Editar" onclick="editarHazanaCatalogo('${id}', '${escapeAttr(data[id].nombre)}')">✏️</button>
+                <button class="icon-btn danger" title="Eliminar" onclick="eliminarHazanaCatalogo('${id}', '${escapeAttr(data[id].nombre)}')">🗑️</button>
+              </div>
+            `;
+            ul.appendChild(li);
+          });
+        }
+
+        const select = document.getElementById('hazanaTipoSelect');
+        const currentVal = select.value;
+        select.innerHTML = '';
+        Object.keys(data).sort((a, b) => data[a].nombre.localeCompare(data[b].nombre)).forEach(id => {
+          const opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = data[id].nombre;
+          select.appendChild(opt);
+        });
+        const optNueva = document.createElement('option');
+        optNueva.value = '__nueva__';
+        optNueva.textContent = '+ Nueva hazaña...';
+        select.appendChild(optNueva);
+
+        if (currentVal && (data[currentVal] || currentVal === '__nueva__')) {
+          select.value = currentVal;
+        }
+        onHazanaTipoChange();
+      });
+    }
+
+    function toggleCatalogoHazanas() {
+      checkAdminAuth(() => {
+        const box = document.getElementById('catalogoHazanasBox');
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+      });
+    }
+
+    function onHazanaTipoChange() {
+      const select = document.getElementById('hazanaTipoSelect');
+      const input = document.getElementById('hazanaTipoNuevoInput');
+      input.style.display = select.value === '__nueva__' ? 'block' : 'none';
+    }
+
+    function agregarHazanaCatalogo() {
+      checkAdminAuth(() => {
+        const input = document.getElementById('nuevaHazanaCatalogoInput');
+        const nombre = sanearNombre(input.value);
+        if (!nombre) return alert('Ingresa el nombre de la hazaña.');
+
+        const yaExiste = Object.keys(catalogoHazanasDict).some(id => catalogoHazanasDict[id].nombre.toLowerCase() === nombre.toLowerCase());
+        if (yaExiste) return alert('Esa hazaña ya existe en el catálogo.');
+
+        db.ref('catalogo_hazanas').push({ nombre: nombre }).then(() => {
+          input.value = '';
+        });
+      });
+    }
+
+    function editarHazanaCatalogo(id, nombreActual) {
+      checkAdminAuth(() => {
+        const nuevoRaw = prompt('Corrige el nombre de la hazaña:', nombreActual);
+        if (nuevoRaw === null) return;
+        const nuevo = sanearNombre(nuevoRaw);
+        if (!nuevo) return alert('El nombre no puede estar vacío.');
+
+        const duplicado = Object.keys(catalogoHazanasDict).some(otherId => otherId !== id && catalogoHazanasDict[otherId].nombre.toLowerCase() === nuevo.toLowerCase());
+        if (duplicado) return alert('Ya existe otra hazaña con ese nombre en el catálogo.');
+
+        db.ref(`catalogo_hazanas/${id}`).update({ nombre: nuevo });
+      });
+    }
+
+    function eliminarHazanaCatalogo(id, nombre) {
+      checkAdminAuth(() => {
+        if (!confirm(`¿Eliminar "${nombre}" del catálogo de hazañas? Las hazañas ya otorgadas con este nombre no se verán afectadas.`)) return;
+        db.ref(`catalogo_hazanas/${id}`).remove();
+      });
+    }
+
+    function otorgarHazana() {
+      checkAdminAuth(() => {
+        const tipoSelect = document.getElementById('hazanaTipoSelect');
+        const jugadorSelect = document.getElementById('hazanaJugadorSelect');
+        const notaInput = document.getElementById('hazanaNotaInput');
+        const jugador = jugadorSelect.value;
+        const nota = sanearNombre(notaInput.value || '');
+
+        if (!jugador) return alert('Selecciona un jugador.');
+
+        const guardarHazana = (nombreHazana) => {
+          const nuevaRef = db.ref(`fechas/${currentFecha}/hazanas`).push();
+          nuevaRef.set({ hazana: nombreHazana, jugador: jugador, nota: nota }).then(() => {
+            alert(`¡Hazaña "${nombreHazana}" otorgada a ${jugador}!`);
+            notaInput.value = '';
+          });
+        };
+
+        if (tipoSelect.value === '__nueva__') {
+          const nuevoNombre = sanearNombre(document.getElementById('hazanaTipoNuevoInput').value);
+          if (!nuevoNombre) return alert('Escribe el nombre de la nueva hazaña.');
+
+          const existenteId = Object.keys(catalogoHazanasDict).find(id => catalogoHazanasDict[id].nombre.toLowerCase() === nuevoNombre.toLowerCase());
+          if (existenteId) {
+            guardarHazana(catalogoHazanasDict[existenteId].nombre);
+          } else {
+            db.ref('catalogo_hazanas').push({ nombre: nuevoNombre }).then(() => {
+              document.getElementById('hazanaTipoNuevoInput').value = '';
+              guardarHazana(nuevoNombre);
+            });
+          }
+        } else {
+          if (!tipoSelect.value || !catalogoHazanasDict[tipoSelect.value]) return alert('Selecciona una hazaña del catálogo o escribe una nueva.');
+          guardarHazana(catalogoHazanasDict[tipoSelect.value].nombre);
+        }
+      });
+    }
+
+    function eliminarHazanaFecha(id) {
+      checkAdminAuth(() => {
+        if (!confirm('¿Eliminar esta hazaña de la fecha actual?')) return;
+        db.ref(`fechas/${currentFecha}/hazanas/${id}`).remove();
+      });
+    }
+
+    function loadSalonFama() {
+      db.ref('fechas').once('value').then(snapshot => {
+        const fechasData = snapshot.val() || {};
+        let registros = [];
+
+        Object.keys(fechasData).forEach(fechaKey => {
+          const hazanas = fechasData[fechaKey].hazanas || {};
+          Object.keys(hazanas).forEach(id => {
+            const h = hazanas[id];
+            registros.push({ fechaKey: fechaKey, hazana: h.hazana, jugador: h.jugador, nota: h.nota || '' });
+          });
+        });
+
+        const box = document.getElementById('salonFamaList');
+        if (registros.length === 0) {
+          box.innerHTML = '<em>Aún no se han otorgado hazañas en la liga.</em>';
+          return;
+        }
+
+        registros.sort((a, b) => {
+          const na = catalogoFechasDict[a.fechaKey] ? catalogoFechasDict[a.fechaKey].numero : 0;
+          const nb = catalogoFechasDict[b.fechaKey] ? catalogoFechasDict[b.fechaKey].numero : 0;
+          return nb - na;
+        });
+
+        const ul = document.createElement('ul');
+        registros.forEach(r => {
+          const nombreFecha = catalogoFechasDict[r.fechaKey] ? catalogoFechasDict[r.fechaKey].nombre : r.fechaKey;
+          const li = document.createElement('li');
+          li.innerHTML = `<span>🏅 <strong>${r.hazana}</strong> — ${r.jugador}${r.nota ? ' <em style="color:#aaa;">(' + r.nota + ')</em>' : ''} <span class="status-badge" style="background:#333; color:#ccc; margin-left:6px;">${nombreFecha}</span></span>`;
+          ul.appendChild(li);
+        });
+
+        box.innerHTML = '';
+        box.appendChild(ul);
+      });
+    }
+
+    // ==================== FIN HAZAÑAS Y MENCIONES ====================
+
     function renderTables(tables, isClosed) {
       const output = document.getElementById('tablesOutput');
       output.innerHTML = '';
@@ -1225,6 +1569,7 @@
     // Inicialización al cargar la página
     window.onload = function() {
       initCatalogoFechas();
+      initCatalogoHazanas();
     };
   </script>
 </body>
