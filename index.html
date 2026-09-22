@@ -186,6 +186,7 @@
     <div class="tabs">
       <div class="tab-btn active" onclick="switchTab('fecha')">📅 Fecha Actual</div>
       <div class="tab-btn" onclick="switchTab('standings')">🏆 Standings Globales</div>
+      <div class="tab-btn" onclick="switchTab('jugadores')">👥 Jugadores</div>
     </div>
 
     <!-- PESTAÑA 1: FECHA ACTUAL -->
@@ -230,22 +231,7 @@
 
       <!-- 1. Pre-Registro (ÚNICA SECCIÓN PÚBLICA LIBRE) -->
       <div class="card" style="border-color: #2e7d32;">
-        <h2>
-          <span>1. Pre-Registro de Jugador</span>
-          <button class="secondary" onclick="toggleCatalogoJugadores()" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">⚙️ Catálogo</button>
-        </h2>
-
-        <div id="catalogoJugadoresBox" style="display:none; margin-bottom: 15px; background:#212121; border:1px solid #444; padding:10px; border-radius:6px;">
-          <h4 style="margin:0 0 8px 0; font-size:0.9rem; color:#aaa;">Catálogo de Jugadores (editable)</h4>
-          <p style="font-size:0.75rem; color:#888; margin:0 0 8px 0;">Sirve para sugerir nombres ya conocidos al escribir y evitar duplicados por error de tipeo. Editar o eliminar aquí no modifica registros ya guardados en fechas pasadas.</p>
-          <ul id="catalogoJugadoresList"></ul>
-          <div class="fecha-control-row">
-            <input type="text" id="nuevoJugadorCatalogoInput" placeholder="Nombre de jugador" style="margin-bottom:0; flex:1;">
-            <button class="add-btn" onclick="agregarJugadorCatalogo()" style="width:auto; padding: 8px 14px; margin-top: 0;">➕</button>
-          </div>
-          <button class="secondary" onclick="migrarJugadoresExistentes()" style="width:100%; margin-top:10px; font-size:0.75rem;">🔄 Migrar Jugadores Existentes (una sola vez)</button>
-        </div>
-
+        <h2>1. Pre-Registro de Jugador</h2>
         <input type="text" id="playerName" list="catalogoJugadoresDatalist" placeholder="Nombre o Nick de Archon" onkeydown="if(event.key==='Enter'){registerPlayer();}">
         <datalist id="catalogoJugadoresDatalist"></datalist>
         <button class="add-btn" onclick="registerPlayer()">Anotarme a esta Fecha</button>
@@ -417,10 +403,24 @@
           <!-- Zona de Riesgo / Reset Total -->
           <div class="danger-zone">
             <h4 style="margin: 0 0 5px 0; color: #ff5252; font-size: 0.95rem;">⚠️ ZONA DE PELIGRO DE LA LIGA</h4>
-            <p style="font-size: 0.75rem; color: #aaa; margin-bottom: 10px;">Esta acción borrará TODAS las fechas, asistencias, rondas y la tabla general de standings de forma irreversible.</p>
+            <p style="font-size: 0.75rem; color: #aaa; margin-bottom: 10px;">Esta acción borrará TODAS las fechas, asistencias, rondas y la tabla general de standings de forma irreversible. El Catálogo de Jugadores y el Catálogo de Hazañas NO se borran.</p>
             <button class="danger-btn" onclick="resetTotalLiga()">💥 RESETEAR TODO A 0 (LIGA COMPLETA)</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- PESTAÑA 3: CATÁLOGO DE JUGADORES -->
+    <div id="tab-jugadores" class="tab-content">
+      <div class="card">
+        <h2>👥 Catálogo de Jugadores</h2>
+        <p style="font-size: 0.8rem; color: #aaa;">Lista de jugadores conocidos de la liga. Se usa para sugerir nombres al pre-registrarse y evitar duplicados por error de tipeo. <strong>No se borra al resetear la liga a 0</strong> — es información permanente, independiente de cada temporada.</p>
+        <ul id="catalogoJugadoresList"></ul>
+        <div class="fecha-control-row">
+          <input type="text" id="nuevoJugadorCatalogoInput" placeholder="Nombre de jugador" style="margin-bottom:0; flex:1;">
+          <button class="add-btn" onclick="agregarJugadorCatalogo()" style="width:auto; padding: 8px 14px; margin-top: 0;">➕</button>
+        </div>
+        <button class="secondary" onclick="migrarJugadoresExistentes()" style="width:100%; margin-top:10px; font-size:0.75rem;">🔄 Migrar Jugadores Existentes (una sola vez)</button>
       </div>
     </div>
 
@@ -806,12 +806,11 @@
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-      if (tabName === 'fecha') {
-        document.querySelectorAll('.tab-btn')[0].classList.add('active');
-        document.getElementById('tab-fecha').classList.add('active');
-      } else {
-        document.querySelectorAll('.tab-btn')[1].classList.add('active');
-        document.getElementById('tab-standings').classList.add('active');
+      const indices = { fecha: 0, standings: 1, jugadores: 2 };
+      document.querySelectorAll('.tab-btn')[indices[tabName]].classList.add('active');
+      document.getElementById(`tab-${tabName}`).classList.add('active');
+
+      if (tabName === 'standings') {
         loadStandings();
         loadSalonFama();
       }
@@ -1114,14 +1113,23 @@
 
     function resetTotalLiga() {
       checkAdminAuth(() => {
-        mostrarConfirm("⚠️ ¿ESTÁS SEGURO DE RESETEAR TODO A 0?\n\nEsta acción borrará todas las fechas, asistencias, mesas de juego y la Tabla General de Standings.", (confirmacion1) => {
+        mostrarConfirm("⚠️ ¿ESTÁS SEGURO DE RESETEAR TODO A 0?\n\nEsta acción borrará todas las fechas, asistencias, mesas de juego y la Tabla General de Standings.\n\nEl Catálogo de Jugadores y el Catálogo de Hazañas NO se borran — son configuración reutilizable de la liga, no datos de una temporada.", (confirmacion1) => {
           if (!confirmacion1) return;
 
           promptPassword("Ingresa la contraseña de Admin para confirmar el reseteo total:", (val) => {
             if (val === ADMIN_PIN) {
               mostrarGuardando("Reseteando...");
-              db.ref().remove().then(() => {
-                mostrarAlerta("💥 Se ha reseteado la base de datos completa a 0.", () => {
+              // Se borran solo los nodos de datos de temporada. catalogo_jugadores y
+              // catalogo_hazanas se conservan intencionalmente: son catálogos reutilizables,
+              // no resultados de una temporada específica.
+              db.ref().update({
+                catalogo_fechas: null,
+                fechas: null,
+                asistencia: null,
+                resumen_fechas: null,
+                ajustes_manuales: null
+              }).then(() => {
+                mostrarAlerta("💥 Se ha reseteado la liga a 0 (fechas, asistencias, mesas y Tabla General). El Catálogo de Jugadores y el de Hazañas se conservaron.", () => {
                   location.reload();
                 });
               });
@@ -1377,13 +1385,6 @@
           opt.value = data[id].nombre;
           datalist.appendChild(opt);
         });
-      });
-    }
-
-    function toggleCatalogoJugadores() {
-      checkAdminAuth(() => {
-        const box = document.getElementById('catalogoJugadoresBox');
-        box.style.display = box.style.display === 'none' ? 'block' : 'none';
       });
     }
 
