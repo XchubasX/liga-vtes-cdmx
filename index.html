@@ -6,7 +6,7 @@
   <title>Liga Las seis tradiciones</title>
   <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #121212; color: #e0e0e0; }
-    .container { max-width: 700px; margin: 0 auto; }
+    .container { max-width: 1080px; margin: 0 auto; }
     h1 { color: #d32f2f; text-align: center; border-bottom: 2px solid #d32f2f; padding-bottom: 10px; margin-bottom: 15px; }
     
     /* Navigation Tabs */
@@ -101,6 +101,56 @@
     .manual-bye-list { font-size: 0.8rem; color: #ce93d8; margin-top: 8px; }
     .manual-actions-row { display: flex; gap: 8px; }
 
+    /* ==================== Calendario de la Liga (Sesión 12) ==================== */
+    /* Las pestañas Standings y Jugadores conservan su ancho de siempre */
+    #tab-standings, #tab-jugadores { max-width: 700px; margin-left: auto; margin-right: auto; }
+    /* Fecha Actual: contenido a la izquierda, calendario a la derecha */
+    .fecha-layout { display: flex; gap: 24px; align-items: flex-start; }
+    .fecha-main { flex: 1; min-width: 0; }
+    .fecha-cal { width: 320px; flex-shrink: 0; position: sticky; top: 20px; box-sizing: border-box; }
+    .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .cal-mes { font-weight: bold; color: #ffffff; font-size: 1.05rem; }
+    button.cal-nav { width: 40px; height: 40px; margin: 0; padding: 0; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; color: #e0e0e0; font-size: 0.95rem; }
+    button.cal-nav:hover { background: #333; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; justify-items: center; }
+    .cal-semana span { font-size: 0.75rem; font-weight: bold; color: #999; padding: 4px 0; }
+    button.cal-dia { width: 36px; height: 36px; margin: 0; padding: 0; border-radius: 50%; background: transparent; border: 2px solid transparent; color: #e0e0e0; font-size: 0.9rem; font-weight: normal; cursor: default; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+    button.cal-dia:hover { background: transparent; }
+    button.cal-dia.fuera { color: #555; }
+    button.cal-dia.hoy { border: 2px dashed #888; }
+    button.cal-dia.jugada { background: #b71c1c; color: #ffffff; font-weight: bold; cursor: pointer; }
+    button.cal-dia.jugada:hover { background: #e53935; }
+    button.cal-dia.jugada.fuera { background: #5a1616; }
+    button.cal-dia.proxima { border: 2px solid #ef5350; color: #ffcdd2; font-weight: bold; cursor: pointer; }
+    button.cal-dia.proxima:hover { background: #2a1515; }
+    button.cal-dia.proxima.fuera { border-color: #7a3030; color: #8a6060; }
+    button.cal-dia.seleccionada { box-shadow: 0 0 0 2px #1e1e1e, 0 0 0 4px #ffb74d; }
+    button.cal-hoy-btn { background: transparent; border: 1px solid #444; color: #ccc; font-size: 0.85rem; padding: 8px; margin-top: 10px; }
+    button.cal-hoy-btn:hover { background: #333; }
+    .cal-info { margin-top: 12px; padding: 10px 12px; background: #2a2a2a; border-radius: 6px; font-size: 0.85rem; line-height: 1.5; }
+    .cal-info .etq { color: #aaa; }
+    .cal-info .val { color: #ffffff; font-weight: bold; }
+    .cal-info .val.prox { color: #ef9a9a; }
+    .cal-leyenda { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; font-size: 0.75rem; color: #bbb; }
+    .cal-leyenda div { display: flex; align-items: center; gap: 8px; }
+    .ley { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; box-sizing: border-box; border: 2px solid transparent; }
+    .ley.jugada { background: #b71c1c; }
+    .ley.proxima { border-color: #ef5350; }
+    .ley.seleccionada { box-shadow: 0 0 0 2px #ffb74d; }
+    .ley.hoy { border: 2px dashed #888; }
+    button.cal-toggle { display: none; width: 100%; background: transparent; margin: 0; padding: 0; min-height: 44px; color: #ef5350; font-size: 1.05rem; justify-content: space-between; align-items: center; }
+    button.cal-toggle:hover { background: transparent; }
+
+    /* Pantallas angostas (celular): calendario arriba y plegable */
+    @media (max-width: 900px) {
+      .fecha-layout { flex-direction: column; align-items: stretch; gap: 0; }
+      .fecha-cal { width: auto; position: static; order: -1; }
+      .cal-titulo { display: none !important; }
+      button.cal-toggle { display: flex; }
+      .fecha-cal:not(.abierto) .cal-cuerpo { display: none; }
+      .fecha-cal.abierto .cal-cuerpo { margin-top: 10px; }
+    }
+
     /* Custom Password Prompt Modal */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
     .modal-box { background: #1e1e1e; border: 1px solid #d32f2f; padding: 20px; border-radius: 8px; width: 90%; max-width: 350px; text-align: center; }
@@ -191,6 +241,8 @@
 
     <!-- PESTAÑA 1: FECHA ACTUAL -->
     <div id="tab-fecha" class="tab-content active">
+      <div class="fecha-layout">
+      <div class="fecha-main">
       
       <!-- Selector de Fecha / Jornada Dinámico -->
       <div class="card">
@@ -200,7 +252,7 @@
         </h2>
         <label style="font-size: 0.85rem; color: #aaa;">Selecciona la Fecha activa:</label>
         <div class="fecha-control-row">
-          <select id="fechaSelect" onchange="changeFechaContext()" style="margin-bottom: 0; flex: 1;"></select>
+          <select id="fechaSelect" onchange="onFechaSelectChange()" style="margin-bottom: 0; flex: 1;"></select>
           <button class="secondary" onclick="abrirEditarFechaActual()" title="Editar día de esta fecha" style="width: 45px; margin-top: 0; padding: 0;">✏️</button>
         </div>
         <div id="fechaCalendarioDisplay" style="font-size: 0.85rem; color: #ef5350; margin-bottom: 10px; font-weight: bold;"></div>
@@ -342,6 +394,42 @@
         <ul id="hazanasFechaList" style="margin-top: 15px;"></ul>
       </div>
 
+      </div><!-- fin .fecha-main -->
+
+      <!-- Calendario de la Liga (Sesión 12) -->
+      <aside id="calendarioLiga" class="card fecha-cal">
+        <h2 class="cal-titulo">📆 Calendario de la Liga</h2>
+        <button type="button" class="cal-toggle" id="calToggleBtn" onclick="toggleCalendarioMovil()" aria-expanded="false" aria-controls="calCuerpo">
+          <span id="calToggleText">📆 Ver calendario de la Liga</span>
+          <span id="calToggleFlecha">▼</span>
+        </button>
+        <div class="cal-cuerpo" id="calCuerpo">
+          <div class="cal-header">
+            <button type="button" class="cal-nav" onclick="cambiarMesCalendario(-1)" aria-label="Mes anterior">◀</button>
+            <span class="cal-mes" id="calMesLabel"></span>
+            <button type="button" class="cal-nav" onclick="cambiarMesCalendario(1)" aria-label="Mes siguiente">▶</button>
+          </div>
+          <div class="cal-grid cal-semana" style="margin-bottom: 4px;">
+            <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
+          </div>
+          <div class="cal-grid" id="calDias"></div>
+          <button type="button" class="cal-hoy-btn" onclick="irAHoyCalendario()">Ir a hoy</button>
+          <div class="cal-info">
+            <div class="etq">Seleccionada</div>
+            <div class="val" id="calSelInfo">—</div>
+            <div class="etq" style="margin-top: 6px;">Próxima jornada</div>
+            <div class="val prox" id="calProxInfo">—</div>
+          </div>
+          <div class="cal-leyenda">
+            <div><span class="ley jugada"></span>Jugada (cerrada)</div>
+            <div><span class="ley proxima"></span>Próxima / abierta</div>
+            <div><span class="ley seleccionada"></span>Fecha seleccionada</div>
+            <div><span class="ley hoy"></span>Hoy</div>
+          </div>
+        </div>
+      </aside>
+
+      </div><!-- fin .fecha-layout -->
     </div>
 
     <!-- PESTAÑA 2: STANDINGS GLOBALES -->
@@ -694,6 +782,8 @@
           select.appendChild(option);
         });
 
+        suscribirEstadosFechas();
+
         if (!currentFecha || !data[currentFecha]) {
           currentFecha = keys[keys.length - 1];
         }
@@ -852,6 +942,7 @@
 
       cancelarManualMode();
       loadFechaData();
+      renderCalendario();
     }
 
     function loadFechaData() {
@@ -2196,6 +2287,144 @@
         });
       });
     }
+
+    // ==================== CALENDARIO DE LA LIGA (Sesión 12) ====================
+    // Solo lee datos que ya existen (catalogo_fechas y fechas/{fecha}/estado).
+    // No escribe nada en Firebase.
+
+    const MESES_CAL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    let estadosFechasDict = {};       // { fecha_XX: "ABIERTA" | "CERRADA" }
+    let estadosFechasSuscritas = {};  // para no escuchar dos veces la misma Fecha
+    let calVistaAnio = new Date().getFullYear();
+    let calVistaMes = new Date().getMonth(); // arranca en el mes de hoy
+
+    // Fecha local en formato AAAA-MM-DD (sin desfase de zona horaria)
+    function isoLocal(d) {
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${d.getFullYear()}-${mm}-${dd}`;
+    }
+
+    function suscribirEstadosFechas() {
+      Object.keys(catalogoFechasDict).forEach(key => {
+        if (estadosFechasSuscritas[key]) return;
+        estadosFechasSuscritas[key] = true;
+        db.ref(`fechas/${key}/estado`).on('value', snap => {
+          estadosFechasDict[key] = snap.val();
+          renderCalendario();
+        });
+      });
+    }
+
+    function renderCalendario() {
+      const contDias = document.getElementById('calDias');
+      if (!contDias) return;
+
+      const hoyIso = isoLocal(new Date());
+      const fechaPorDia = {};
+      Object.keys(catalogoFechasDict).forEach(key => {
+        const f = catalogoFechasDict[key];
+        if (f && f.fecha_calendario) fechaPorDia[f.fecha_calendario] = key;
+      });
+
+      document.getElementById('calMesLabel').textContent = `${MESES_CAL[calVistaMes]} ${calVistaAnio}`;
+
+      // Semanas de lunes a domingo
+      const offset = (new Date(calVistaAnio, calVistaMes, 1).getDay() + 6) % 7;
+      const diasEnMes = new Date(calVistaAnio, calVistaMes + 1, 0).getDate();
+      const totalCeldas = Math.ceil((offset + diasEnMes) / 7) * 7;
+
+      contDias.innerHTML = '';
+      for (let i = 0; i < totalCeldas; i++) {
+        const d = new Date(calVistaAnio, calVistaMes, 1 - offset + i);
+        const iso = isoLocal(d);
+        const key = fechaPorDia[iso];
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cal-dia';
+        btn.textContent = d.getDate();
+        if (d.getMonth() !== calVistaMes) btn.classList.add('fuera');
+
+        if (key) {
+          const info = catalogoFechasDict[key];
+          const cerrada = estadosFechasDict[key] === 'CERRADA';
+          btn.classList.add(cerrada ? 'jugada' : 'proxima');
+          if (key === currentFecha) btn.classList.add('seleccionada');
+          const tip = `${info.nombre} · ${formatearFechaDDMMAAAA(iso)} · ${cerrada ? 'Jugada' : 'Próxima / abierta'}`;
+          btn.title = tip;
+          btn.setAttribute('aria-label', tip);
+          btn.onclick = () => seleccionarFechaDesdeCalendario(key);
+        } else {
+          btn.disabled = true;
+          if (iso === hoyIso) btn.classList.add('hoy');
+        }
+        contDias.appendChild(btn);
+      }
+
+      // Recuadro "Seleccionada / Próxima jornada"
+      const sel = catalogoFechasDict[currentFecha];
+      document.getElementById('calSelInfo').textContent = sel
+        ? `${sel.nombre} — ${formatearFechaDDMMAAAA(sel.fecha_calendario)} (${estadosFechasDict[currentFecha] === 'CERRADA' ? 'cerrada' : 'abierta'})`
+        : '—';
+
+      let proxKey = null;
+      Object.keys(catalogoFechasDict).forEach(key => {
+        const f = catalogoFechasDict[key];
+        if (!f || !f.fecha_calendario) return;
+        if (f.fecha_calendario >= hoyIso && estadosFechasDict[key] !== 'CERRADA') {
+          if (!proxKey || f.fecha_calendario < catalogoFechasDict[proxKey].fecha_calendario) proxKey = key;
+        }
+      });
+      document.getElementById('calProxInfo').textContent = proxKey
+        ? `${catalogoFechasDict[proxKey].nombre} — ${formatearFechaDDMMAAAA(catalogoFechasDict[proxKey].fecha_calendario)}`
+        : 'Sin jornadas programadas';
+    }
+
+    function moverCalendarioAFecha(key) {
+      const f = catalogoFechasDict[key];
+      if (!f || !f.fecha_calendario) return;
+      const p = f.fecha_calendario.split('-');
+      calVistaAnio = parseInt(p[0], 10);
+      calVistaMes = parseInt(p[1], 10) - 1;
+    }
+
+    // Tocar un día marcado = elegir esa Fecha en el selector de arriba
+    function seleccionarFechaDesdeCalendario(key) {
+      document.getElementById('fechaSelect').value = key;
+      moverCalendarioAFecha(key);
+      changeFechaContext();
+    }
+
+    // Elegir una Fecha en el selector lleva el calendario a su mes
+    function onFechaSelectChange() {
+      moverCalendarioAFecha(document.getElementById('fechaSelect').value);
+      changeFechaContext();
+    }
+
+    function cambiarMesCalendario(delta) {
+      calVistaMes += delta;
+      if (calVistaMes < 0) { calVistaMes = 11; calVistaAnio--; }
+      if (calVistaMes > 11) { calVistaMes = 0; calVistaAnio++; }
+      renderCalendario();
+    }
+
+    function irAHoyCalendario() {
+      const hoy = new Date();
+      calVistaAnio = hoy.getFullYear();
+      calVistaMes = hoy.getMonth();
+      renderCalendario();
+    }
+
+    // Solo en celular: mostrar / ocultar el calendario
+    function toggleCalendarioMovil() {
+      const caja = document.getElementById('calendarioLiga');
+      const abierto = caja.classList.toggle('abierto');
+      document.getElementById('calToggleBtn').setAttribute('aria-expanded', abierto ? 'true' : 'false');
+      document.getElementById('calToggleText').textContent = abierto ? '📆 Ocultar calendario' : '📆 Ver calendario de la Liga';
+      document.getElementById('calToggleFlecha').textContent = abierto ? '▲' : '▼';
+    }
+
+    // ==================== FIN CALENDARIO DE LA LIGA ====================
 
     // Inicialización al cargar la página
     window.onload = function() {
