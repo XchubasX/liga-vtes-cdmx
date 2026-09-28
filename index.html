@@ -5,61 +5,96 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Liga Las seis tradiciones</title>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #121212; color: #e0e0e0; }
+    /* ==================== PALETA (Sesión 13 — tonos sobrios) ====================
+       Un solo color de acento (rojo sangre apagado) y grises cálidos.
+       Para cambiar un color en toda la app, cámbialo aquí. */
+    :root {
+      --fondo: #141213;          /* página */
+      --tarjeta: #1c191a;        /* tarjetas */
+      --campo: #242021;          /* campos, filas de lista */
+      --campo-2: #211e1f;        /* cajas internas */
+      --borde: #2e2829;          /* bordes de tarjetas */
+      --borde-2: #3a3334;        /* bordes de campos y botones */
+      --texto: #e8e2df;
+      --texto-fuerte: #f0e9e6;
+      --texto-suave: #b8aeab;
+      --texto-tenue: #9d9391;
+      --acento: #8e2627;         /* botón principal */
+      --acento-hover: #a52f30;
+      --acento-oscuro: #6e2426;  /* fechas jugadas, bordes delicados */
+      --acento-texto: #d5736f;   /* títulos */
+      --acento-texto-2: #e8a09c;
+      --dorado: #cfae6b;         /* seleccionado */
+      --dorado-texto: #c9b48a;   /* botones de limpieza / reset */
+      --ok-fondo: #1f2b23; --ok-texto: #9cc5a4; --ok-borde: #2f4436;
+      --cerrada-fondo: #33201f; --cerrada-texto: #e3a9a5; --cerrada-borde: #4a2c2b;
+    }
+
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: var(--fondo); color: var(--texto); }
     .container { max-width: 1080px; margin: 0 auto; }
-    h1 { color: #d32f2f; text-align: center; border-bottom: 2px solid #d32f2f; padding-bottom: 10px; margin-bottom: 15px; }
-    
+    h1 { color: var(--acento-texto); text-align: center; border-bottom: 1px solid #3a2a2b; padding-bottom: 12px; margin-bottom: 18px; font-weight: 600; letter-spacing: 0.5px; }
+
     /* Navigation Tabs */
-    .tabs { display: flex; gap: 5px; margin-bottom: 20px; }
-    .tab-btn { flex: 1; padding: 12px; background: #1e1e1e; color: #aaa; border: 1px solid #333; border-radius: 6px 6px 0 0; cursor: pointer; font-weight: bold; text-align: center; }
-    .tab-btn.active { background: #b71c1c; color: white; border-color: #b71c1c; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--borde); }
+    .tab-btn { flex: 1; padding: 12px; background: transparent; color: var(--texto-tenue); border: none; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 600; text-align: center; }
+    .tab-btn:hover { color: var(--texto); }
+    .tab-btn.active { background: transparent; color: var(--texto-fuerte); border-bottom-color: var(--acento); }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    .card { background: #1e1e1e; border: 1px solid #333; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    h2 { margin-top: 0; color: #ef5350; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center; }
-    
-    input[type="text"], input[type="number"], input[type="date"], input[type="password"], select { padding: 8px; border-radius: 4px; border: 1px solid #444; background: #2a2a2a; color: white; font-size: 0.95rem; }
+    .card { background: var(--tarjeta); border: 1px solid var(--borde); padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    h2 { margin-top: 0; color: var(--acento-texto); font-size: 1.1rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+
+    input[type="text"], input[type="number"], input[type="date"], input[type="password"], select { padding: 8px; border-radius: 4px; border: 1px solid var(--borde-2); background: var(--campo); color: var(--texto); font-size: 0.95rem; }
     input[type="text"] { width: calc(100% - 20px); margin-bottom: 10px; }
     input[type="number"] { width: 60px; text-align: center; }
     input[type="date"] { width: calc(100% - 20px); margin-bottom: 10px; color-scheme: dark; }
     input[type="password"] { width: calc(100% - 20px); margin-bottom: 10px; }
     select { width: 100%; margin-bottom: 10px; }
-    
-    button { width: 100%; padding: 12px; background: #b71c1c; color: white; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; margin-top: 5px; }
-    button:hover { background: #e53935; }
-    button.secondary { background: #1565c0; }
-    button.secondary:hover { background: #1e88e5; }
-    button.close-btn { background: #d84315; }
-    button.close-btn:hover { background: #f4511e; }
-    button.add-btn { background: #2e7d32; }
-    button.add-btn:hover { background: #388e3c; }
-    button.warning-btn { background: #f57c00; }
-    button.warning-btn:hover { background: #ff9800; }
-    button.danger-btn { background: #b71c1c; border: 1px solid #ff5252; }
-    button.danger-btn:hover { background: #d32f2f; }
-    button.reopen-btn { background: #6a1b9a; }
-    button.reopen-btn:hover { background: #8e24aa; }
-    button.icon-btn { width: auto; padding: 4px 8px; margin-top: 0; background: transparent; border: 1px solid #444; font-size: 0.85rem; }
-    button.icon-btn:hover { background: #333; }
-    button.icon-btn.danger { border-color: #b71c1c; }
-    button.icon-btn.danger:hover { background: #b71c1c; }
-    
+
+    /* Botón principal (acento) */
+    button { width: 100%; padding: 12px; background: var(--acento); color: #ffffff; font-weight: 600; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 1rem; margin-top: 5px; }
+    button:hover { background: var(--acento-hover); }
+    button:disabled { cursor: not-allowed; }
+    /* Botón de apoyo (gris con borde) */
+    button.secondary { background: #262223; border-color: var(--borde-2); color: var(--texto); }
+    button.secondary:hover { background: #2e2829; }
+    /* Acción delicada: cerrar fecha */
+    button.close-btn { background: transparent; border-color: var(--acento); color: var(--acento-texto-2); }
+    button.close-btn:hover { background: #2e1c1d; }
+    /* Acciones principales (antes verdes) = acento */
+    button.add-btn { background: var(--acento); }
+    button.add-btn:hover { background: var(--acento-hover); }
+    /* Limpieza / reset: discreto */
+    button.warning-btn { background: transparent; border-color: var(--borde-2); color: var(--dorado-texto); }
+    button.warning-btn:hover { background: #262223; }
+    /* Zona de peligro */
+    button.danger-btn { background: #7a1f20; border: 1px solid #b5474a; }
+    button.danger-btn:hover { background: #8e2627; }
+    /* Reabrir fecha = apoyo */
+    button.reopen-btn { background: #262223; border-color: var(--borde-2); color: var(--texto); }
+    button.reopen-btn:hover { background: #2e2829; }
+    button.icon-btn { width: auto; padding: 4px 8px; margin-top: 0; background: transparent; border: 1px solid var(--borde-2); font-size: 0.85rem; }
+    button.icon-btn:hover { background: #2e2829; }
+    button.icon-btn.danger { border-color: var(--acento-oscuro); }
+    button.icon-btn.danger:hover { background: var(--acento-oscuro); }
+
     ul { list-style: none; padding: 0; margin: 0; }
-    li { background: #2a2a2a; margin-bottom: 8px; padding: 10px 15px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    li { background: var(--campo); margin-bottom: 8px; padding: 10px 15px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
     .checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-    input[type="checkbox"] { transform: scale(1.3); cursor: pointer; }
+    input[type="checkbox"] { transform: scale(1.3); cursor: pointer; accent-color: var(--acento); }
     .player-actions { display: flex; gap: 6px; align-items: center; }
-    
-    .table-box { background: #2a1515; border-left: 4px solid #d32f2f; padding: 12px; margin-top: 15px; border-radius: 0 4px 4px 0; }
-    .status-badge { font-size: 0.8rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
-    .present { background: #1b5e20; color: #a5d6a7; }
-    .absent { background: #424242; color: #bdbdbd; }
-    .badge-open { background: #2e7d32; color: white; }
-    .badge-closed { background: #c62828; color: white; }
-    .badge-bye { background: #6a1b9a; color: #e1bee7; }
-    
-    .vp-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; background: #1e1e1e; padding: 6px 10px; border-radius: 4px; }
+
+    .table-box { background: #211d1e; border: 1px solid var(--borde); padding: 12px; margin-top: 15px; border-radius: 6px; }
+    .status-badge { font-size: 0.8rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; border: 1px solid transparent; }
+    .present { background: var(--ok-fondo); color: var(--ok-texto); border-color: var(--ok-borde); }
+    .absent { background: #2a2627; color: var(--texto-tenue); border-color: var(--borde-2); }
+    .badge-open { background: var(--ok-fondo); color: var(--ok-texto); border-color: var(--ok-borde); }
+    .badge-closed { background: var(--cerrada-fondo); color: var(--cerrada-texto); border-color: var(--cerrada-borde); }
+    .badge-bye { background: #29232c; color: #c4b5cf; border-color: #3b3240; }
+    .badge-neutra { background: #2a2627; color: var(--texto-suave); border-color: var(--borde-2); }
+
+    .vp-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; background: #1a1718; padding: 6px 10px; border-radius: 4px; }
 
     /* Ajuste dirigido para pantallas pequeñas: mesas y captura de VP */
     @media (max-width: 480px) {
@@ -71,37 +106,37 @@
     }
 
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95rem; }
-    th, td { padding: 10px; text-align: center; border-bottom: 1px solid #333; }
-    th { background: #2a2a2a; color: #ef5350; }
+    th, td { padding: 10px; text-align: center; border-bottom: 1px solid var(--borde); }
+    th { background: var(--campo); color: var(--acento-texto); font-weight: 600; }
     td.player-name { text-align: left; font-weight: bold; }
-    tr:nth-child(even) { background: #181818; }
-    
-    .admin-panel { background: #261c1c; border: 1px dashed #d32f2f; padding: 15px; border-radius: 8px; margin-top: 20px; }
-    .new-fecha-box { background: #212121; border: 1px solid #444; padding: 10px; border-radius: 6px; margin-top: 10px; }
-    
+    tr:nth-child(even) { background: #181516; }
+
+    .admin-panel { background: #1f1a1b; border: 1px dashed var(--acento-oscuro); padding: 15px; border-radius: 8px; margin-top: 20px; }
+    .new-fecha-box { background: var(--campo-2); border: 1px solid var(--borde-2); padding: 10px; border-radius: 6px; margin-top: 10px; }
+
     .round-selector { display: flex; gap: 10px; margin-bottom: 15px; }
-    .round-btn { flex: 1; padding: 8px; background: #2a2a2a; border: 1px solid #444; color: #ccc; cursor: pointer; border-radius: 4px; text-align: center; font-weight: bold; }
-    .round-btn.active { background: #1565c0; color: white; border-color: #1e88e5; }
-    .danger-zone { border-top: 1px dashed #ef5350; margin-top: 15px; padding-top: 15px; }
-    
+    .round-btn { flex: 1; padding: 8px; background: var(--campo-2); border: 1px solid var(--borde-2); color: var(--texto-tenue); cursor: pointer; border-radius: 4px; text-align: center; font-weight: 600; }
+    .round-btn.active { background: #2e1c1d; color: #f0e6e4; border-color: var(--acento); }
+    .danger-zone { border-top: 1px dashed var(--acento-oscuro); margin-top: 15px; padding-top: 15px; }
+
     .fecha-control-row { display: flex; gap: 8px; margin-bottom: 10px; }
 
-    .ranking-note { font-size: 0.8rem; padding: 8px 10px; border-radius: 4px; margin-bottom: 10px; font-weight: bold; }
-    .ranking-note.provisional { background: #2a1c00; color: #ffb74d; border: 1px solid #f57c00; }
-    .ranking-note.final { background: #0d2a12; color: #81c784; border: 1px solid #2e7d32; }
+    .ranking-note { font-size: 0.8rem; padding: 8px 10px; border-radius: 4px; margin-bottom: 10px; font-weight: 600; }
+    .ranking-note.provisional { background: #2a2419; color: #d9c08a; border: 1px solid #4a3f28; }
+    .ranking-note.final { background: var(--ok-fondo); color: var(--ok-texto); border: 1px solid var(--ok-borde); }
 
     /* Armado Manual de Mesas */
-    .manual-box { background: #14202a; border: 1px solid #1565c0; padding: 12px; border-radius: 6px; margin-top: 15px; }
-    .manual-box h4 { margin: 0 0 8px 0; color: #64b5f6; font-size: 0.95rem; }
+    .manual-box { background: #1f1c1d; border: 1px solid var(--borde-2); padding: 12px; border-radius: 6px; margin-top: 15px; }
+    .manual-box h4 { margin: 0 0 8px 0; color: var(--acento-texto); font-size: 0.95rem; }
     .manual-pending-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-    .manual-chip { background: #2a2a2a; border: 1px solid #444; padding: 6px 10px; border-radius: 16px; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+    .manual-chip { background: var(--campo); border: 1px solid var(--borde-2); padding: 6px 10px; border-radius: 16px; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
     .manual-chip input[type="checkbox"] { transform: scale(1.1); }
-    .manual-counter { font-size: 0.8rem; color: #aaa; margin-bottom: 8px; }
-    .manual-staged-table { background: #1e1e1e; border-left: 3px solid #1565c0; padding: 8px 12px; margin-bottom: 8px; border-radius: 0 4px 4px 0; font-size: 0.9rem; }
-    .manual-bye-list { font-size: 0.8rem; color: #ce93d8; margin-top: 8px; }
+    .manual-counter { font-size: 0.8rem; color: var(--texto-tenue); margin-bottom: 8px; }
+    .manual-staged-table { background: var(--tarjeta); border: 1px solid var(--borde); padding: 8px 12px; margin-bottom: 8px; border-radius: 4px; font-size: 0.9rem; }
+    .manual-bye-list { font-size: 0.8rem; color: #c4b5cf; margin-top: 8px; }
     .manual-actions-row { display: flex; gap: 8px; }
 
-    /* ==================== Calendario de la Liga (Sesión 12) ==================== */
+    /* ==================== Calendario de la Liga (Sesión 12, colores Sesión 13) ==================== */
     /* Las pestañas Standings y Jugadores conservan su ancho de siempre */
     #tab-standings, #tab-jugadores { max-width: 700px; margin-left: auto; margin-right: auto; }
     /* Fecha Actual: contenido a la izquierda, calendario a la derecha */
@@ -109,36 +144,36 @@
     .fecha-main { flex: 1; min-width: 0; }
     .fecha-cal { width: 320px; flex-shrink: 0; position: sticky; top: 20px; box-sizing: border-box; }
     .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .cal-mes { font-weight: bold; color: #ffffff; font-size: 1.05rem; }
-    button.cal-nav { width: 40px; height: 40px; margin: 0; padding: 0; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; color: #e0e0e0; font-size: 0.95rem; }
-    button.cal-nav:hover { background: #333; }
+    .cal-mes { font-weight: 600; color: var(--texto-fuerte); font-size: 1.05rem; }
+    button.cal-nav { width: 40px; height: 40px; margin: 0; padding: 0; background: var(--campo); border: 1px solid var(--borde-2); border-radius: 6px; color: var(--texto-suave); font-size: 0.95rem; }
+    button.cal-nav:hover { background: #2e2829; }
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; justify-items: center; }
-    .cal-semana span { font-size: 0.75rem; font-weight: bold; color: #999; padding: 4px 0; }
-    button.cal-dia { width: 36px; height: 36px; margin: 0; padding: 0; border-radius: 50%; background: transparent; border: 2px solid transparent; color: #e0e0e0; font-size: 0.9rem; font-weight: normal; cursor: default; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+    .cal-semana span { font-size: 0.75rem; font-weight: 600; color: #7d7472; padding: 4px 0; }
+    button.cal-dia { width: 36px; height: 36px; margin: 0; padding: 0; border-radius: 50%; background: transparent; border: 2px solid transparent; color: #cfc7c4; font-size: 0.9rem; font-weight: normal; cursor: default; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
     button.cal-dia:hover { background: transparent; }
-    button.cal-dia.fuera { color: #555; }
-    button.cal-dia.hoy { border: 2px dashed #888; }
-    button.cal-dia.jugada { background: #b71c1c; color: #ffffff; font-weight: bold; cursor: pointer; }
-    button.cal-dia.jugada:hover { background: #e53935; }
-    button.cal-dia.jugada.fuera { background: #5a1616; }
-    button.cal-dia.proxima { border: 2px solid #ef5350; color: #ffcdd2; font-weight: bold; cursor: pointer; }
-    button.cal-dia.proxima:hover { background: #2a1515; }
-    button.cal-dia.proxima.fuera { border-color: #7a3030; color: #8a6060; }
-    button.cal-dia.seleccionada { box-shadow: 0 0 0 2px #1e1e1e, 0 0 0 4px #ffb74d; }
-    button.cal-hoy-btn { background: transparent; border: 1px solid #444; color: #ccc; font-size: 0.85rem; padding: 8px; margin-top: 10px; }
-    button.cal-hoy-btn:hover { background: #333; }
-    .cal-info { margin-top: 12px; padding: 10px 12px; background: #2a2a2a; border-radius: 6px; font-size: 0.85rem; line-height: 1.5; }
-    .cal-info .etq { color: #aaa; }
-    .cal-info .val { color: #ffffff; font-weight: bold; }
-    .cal-info .val.prox { color: #ef9a9a; }
-    .cal-leyenda { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; font-size: 0.75rem; color: #bbb; }
+    button.cal-dia.fuera { color: #4a4344; }
+    button.cal-dia.hoy { border: 2px dashed #6b6263; }
+    button.cal-dia.jugada { background: var(--acento-oscuro); color: #f3dedd; font-weight: 600; cursor: pointer; }
+    button.cal-dia.jugada:hover { background: var(--acento); }
+    button.cal-dia.jugada.fuera { background: #3d1c1d; color: #9a7f7e; }
+    button.cal-dia.proxima { border: 2px solid #b5474a; color: #e6c3c1; font-weight: 600; cursor: pointer; }
+    button.cal-dia.proxima:hover { background: #2e1c1d; }
+    button.cal-dia.proxima.fuera { border-color: #5a3334; color: #7a6260; }
+    button.cal-dia.seleccionada { box-shadow: 0 0 0 2px var(--tarjeta), 0 0 0 4px var(--dorado); }
+    button.cal-hoy-btn { background: transparent; border: 1px solid var(--borde-2); color: var(--texto-suave); font-size: 0.85rem; padding: 8px; margin-top: 10px; }
+    button.cal-hoy-btn:hover { background: #262223; }
+    .cal-info { margin-top: 12px; padding: 10px 12px; background: var(--campo); border-radius: 6px; font-size: 0.85rem; line-height: 1.5; }
+    .cal-info .etq { color: var(--texto-tenue); }
+    .cal-info .val { color: var(--texto-fuerte); font-weight: 600; }
+    .cal-info .val.prox { color: #e3aeaa; }
+    .cal-leyenda { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; font-size: 0.75rem; color: #a39a98; }
     .cal-leyenda div { display: flex; align-items: center; gap: 8px; }
     .ley { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; box-sizing: border-box; border: 2px solid transparent; }
-    .ley.jugada { background: #b71c1c; }
-    .ley.proxima { border-color: #ef5350; }
-    .ley.seleccionada { box-shadow: 0 0 0 2px #ffb74d; }
-    .ley.hoy { border: 2px dashed #888; }
-    button.cal-toggle { display: none; width: 100%; background: transparent; margin: 0; padding: 0; min-height: 44px; color: #ef5350; font-size: 1.05rem; justify-content: space-between; align-items: center; }
+    .ley.jugada { background: var(--acento-oscuro); }
+    .ley.proxima { border-color: #b5474a; }
+    .ley.seleccionada { box-shadow: 0 0 0 2px var(--dorado); }
+    .ley.hoy { border: 2px dashed #6b6263; }
+    button.cal-toggle { display: none; width: 100%; background: transparent; margin: 0; padding: 0; min-height: 44px; color: var(--acento-texto); font-size: 1.05rem; justify-content: space-between; align-items: center; }
     button.cal-toggle:hover { background: transparent; }
 
     /* Pantallas angostas (celular): calendario arriba y plegable */
@@ -153,8 +188,8 @@
 
     /* Custom Password Prompt Modal */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
-    .modal-box { background: #1e1e1e; border: 1px solid #d32f2f; padding: 20px; border-radius: 8px; width: 90%; max-width: 350px; text-align: center; }
-    .modal-box h3 { margin-top: 0; color: #ef5350; }
+    .modal-box { background: var(--tarjeta); border: 1px solid var(--acento-oscuro); padding: 20px; border-radius: 8px; width: 90%; max-width: 350px; text-align: center; }
+    .modal-box h3 { margin-top: 0; color: var(--acento-texto); }
     .modal-box input { width: calc(100% - 20px); margin-bottom: 15px; }
     .modal-actions { display: flex; gap: 10px; }
     .modal-actions button { margin-top: 0; }
@@ -168,12 +203,13 @@
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: #1565c0;
-      color: white;
+      background: #3a3334;
+      color: var(--texto-fuerte);
+      border: 1px solid #4a4243;
       padding: 10px 20px;
       border-radius: 20px;
       font-size: 0.85rem;
-      font-weight: bold;
+      font-weight: 600;
       box-shadow: 0 2px 10px rgba(0,0,0,0.4);
       z-index: 2000;
       align-items: center;
@@ -181,7 +217,7 @@
     }
     #savingToast.show { display: flex; }
     .spinner-dot {
-      width: 8px; height: 8px; border-radius: 50%; background: white;
+      width: 8px; height: 8px; border-radius: 50%; background: var(--dorado);
       animation: spinnerPulse 1s infinite ease-in-out;
     }
     @keyframes spinnerPulse {
@@ -201,7 +237,7 @@
   <div id="passwordModal" class="modal-overlay">
     <div class="modal-box">
       <h3>🔒 Autorización Requerida</h3>
-      <p id="modalPromptText" style="font-size: 0.85rem; color: #aaa;">Ingresa la contraseña de Administrador:</p>
+      <p id="modalPromptText" style="font-size: 0.85rem; color: var(--texto-tenue);">Ingresa la contraseña de Administrador:</p>
       <input type="password" id="modalPasswordInput" placeholder="Contraseña">
       <div class="modal-actions">
         <button class="secondary" onclick="closePasswordModal(false)">Cancelar</button>
@@ -250,12 +286,12 @@
           <span>Gestión de Jornada</span>
           <span id="fechaStatusBadge" class="status-badge badge-open">ABIERTA</span>
         </h2>
-        <label style="font-size: 0.85rem; color: #aaa;">Selecciona la Fecha activa:</label>
+        <label style="font-size: 0.85rem; color: var(--texto-tenue);">Selecciona la Fecha activa:</label>
         <div class="fecha-control-row">
           <select id="fechaSelect" onchange="onFechaSelectChange()" style="margin-bottom: 0; flex: 1;"></select>
           <button class="secondary" onclick="abrirEditarFechaActual()" title="Editar día de esta fecha" style="width: 45px; margin-top: 0; padding: 0;">✏️</button>
         </div>
-        <div id="fechaCalendarioDisplay" style="font-size: 0.85rem; color: #ef5350; margin-bottom: 10px; font-weight: bold;"></div>
+        <div id="fechaCalendarioDisplay" style="font-size: 0.85rem; color: var(--texto-suave); margin-bottom: 10px; font-weight: bold;"></div>
 
         <!-- Botones de administración de fechas -->
         <div style="display: flex; gap: 8px;">
@@ -265,8 +301,8 @@
         <button id="reabrirFechaBtn" class="reopen-btn" onclick="reabrirFecha()" style="display: none;">🔓 Reabrir Fecha</button>
         
         <div id="nuevaFechaForm" class="new-fecha-box" style="display: none;">
-          <h3 style="margin-top: 0; font-size: 0.95rem; color: #aaa;" id="formFechaTitle">Nueva Jornada</h3>
-          <label style="font-size: 0.8rem; color: #ccc;" id="labelFechaInput">Día exacto de la jornada:</label>
+          <h3 style="margin-top: 0; font-size: 0.95rem; color: var(--texto-tenue);" id="formFechaTitle">Nueva Jornada</h3>
+          <label style="font-size: 0.8rem; color: var(--texto-suave);" id="labelFechaInput">Día exacto de la jornada:</label>
           <input type="date" id="newFechaDate">
           <button class="add-btn" id="btnGuardarFechaAccion" onclick="guardarFechaAccion()">Confirmar y Guardar Fecha</button>
         </div>
@@ -282,7 +318,7 @@
       </div>
 
       <!-- 1. Pre-Registro (ÚNICA SECCIÓN PÚBLICA LIBRE) -->
-      <div class="card" style="border-color: #2e7d32;">
+      <div class="card">
         <h2>1. Pre-Registro de Jugador</h2>
         <input type="text" id="playerName" list="catalogoJugadoresDatalist" placeholder="Nombre o Nick de Archon" onkeydown="if(event.key==='Enter'){registerPlayer();}">
         <datalist id="catalogoJugadoresDatalist"></datalist>
@@ -295,8 +331,8 @@
           <span>2. Pase de Lista (Venue)</span>
           <button class="warning-btn" onclick="resetPaseDeLista()" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">🧹 Reset Pase de Lista</button>
         </h2>
-        <p style="font-size: 0.8rem; color: #aaa;">Marca la casilla únicamente cuando el jugador LLEGUE FÍSICAMENTE (Requiere Admin). Usa ✏️ para corregir un nombre mal escrito o 🗑️ para eliminarlo de esta fecha.</p>
-        <label class="checkbox-label" style="margin-bottom: 10px; padding: 8px 12px; background: #242424; border-radius: 4px;">
+        <p style="font-size: 0.8rem; color: var(--texto-tenue);">Marca la casilla únicamente cuando el jugador LLEGUE FÍSICAMENTE (Requiere Admin). Usa ✏️ para corregir un nombre mal escrito o 🗑️ para eliminarlo de esta fecha.</p>
+        <label class="checkbox-label" style="margin-bottom: 10px; padding: 8px 12px; background: var(--campo-2); border-radius: 4px;">
           <input type="checkbox" id="selectAllPresentCheckbox" onchange="toggleSeleccionarTodosPresentes(this.checked)">
           <strong>Seleccionar / Deseleccionar todos</strong>
         </label>
@@ -309,7 +345,7 @@
           <span>3. Sorteo y Asignación</span>
           <button class="warning-btn" onclick="resetRondaActual()" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">🧹 Limpiar Mesas de esta Ronda</button>
         </h2>
-        <button onclick="generateTables()" style="background: #2e7d32;">🎲 Sortear Mesas (<span id="rondaLabelText">Ronda 1</span>)</button>
+        <button onclick="generateTables()">🎲 Sortear Mesas (<span id="rondaLabelText">Ronda 1</span>)</button>
         <button class="secondary" onclick="toggleManualMode()" id="toggleManualBtn">🛠️ Armar Mesas Manualmente</button>
 
         <div id="manualBuilderBox" class="manual-box" style="display: none;">
@@ -361,7 +397,7 @@
       <!-- 6. Cierre de Fecha -->
       <div class="card">
         <h2>6. Finalizar Jornada Completa</h2>
-        <p style="font-size: 0.8rem; color: #aaa;">Al cerrar la fecha, los puntos acumulados de TODAS las rondas jugadas en esta fecha se computarán de forma definitiva en la Tabla General.</p>
+        <p style="font-size: 0.8rem; color: var(--texto-tenue);">Al cerrar la fecha, los puntos acumulados de TODAS las rondas jugadas en esta fecha se computarán de forma definitiva en la Tabla General.</p>
         <button id="closeFechaBtn" class="close-btn" onclick="cerrarFechaYComputar()">🔒 Cerrar Fecha (Computar R1 + R2)</button>
         <button id="exportCsvBtn" class="secondary" onclick="exportarFechaCSV()" style="display:none;">📥 Exportar Fecha a CSV</button>
       </div>
@@ -373,8 +409,8 @@
           <button class="secondary" onclick="toggleCatalogoHazanas()" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">⚙️ Catálogo</button>
         </h2>
 
-        <div id="catalogoHazanasBox" style="display:none; margin-bottom: 15px; background:#212121; border:1px solid #444; padding:10px; border-radius:6px;">
-          <h4 style="margin:0 0 8px 0; font-size:0.9rem; color:#aaa;">Catálogo de Hazañas (editable)</h4>
+        <div id="catalogoHazanasBox" style="display:none; margin-bottom: 15px; background:var(--campo-2); border:1px solid var(--borde-2); padding:10px; border-radius:6px;">
+          <h4 style="margin:0 0 8px 0; font-size:0.9rem; color:var(--texto-tenue);">Catálogo de Hazañas (editable)</h4>
           <ul id="catalogoHazanasList"></ul>
           <div class="fecha-control-row">
             <input type="text" id="nuevaHazanaCatalogoInput" placeholder="Nueva hazaña (ej. Sangrado más cuantioso)" style="margin-bottom:0; flex:1;">
@@ -382,7 +418,7 @@
           </div>
         </div>
 
-        <label style="font-size: 0.8rem; color: #aaa;">Otorgar hazaña de esta fecha:</label>
+        <label style="font-size: 0.8rem; color: var(--texto-tenue);">Otorgar hazaña de esta fecha:</label>
         <select id="hazanaTipoSelect" onchange="onHazanaTipoChange()"></select>
         <input type="text" id="hazanaTipoNuevoInput" placeholder="Escribe el nombre de la nueva hazaña" style="display:none;">
         <select id="hazanaJugadorSelect">
@@ -455,29 +491,29 @@
       <!-- Salón de la Fama -->
       <div class="card">
         <h2>🏅 Salón de la Fama</h2>
-        <h4 style="margin: 0 0 8px 0; font-size: 0.85rem; color: #aaa;">🏆 Campeones por Categoría</h4>
+        <h4 style="margin: 0 0 8px 0; font-size: 0.85rem; color: var(--texto-tenue);">🏆 Campeones por Categoría</h4>
         <div id="campeonesHazanaBox"><em>Calculando campeones...</em></div>
-        <h4 style="margin: 18px 0 8px 0; font-size: 0.85rem; color: #aaa;">Historial Completo</h4>
+        <h4 style="margin: 18px 0 8px 0; font-size: 0.85rem; color: var(--texto-tenue);">Historial Completo</h4>
         <div id="salonFamaList"><em>Cargando hazañas...</em></div>
       </div>
 
       <!-- Panel de Corrección Excepcional (Protegido por Admin) -->
       <div class="admin-panel">
-        <h3 style="margin-top: 0; color: #ef5350; font-size: 1rem;">🔒 Panel de Administrador</h3>
+        <h3 style="margin-top: 0; color: var(--acento-texto); font-size: 1rem;">🔒 Panel de Administrador</h3>
         
         <div id="adminAuthBox">
-          <p style="font-size: 0.8rem; color: #aaa;">Ingresa el PIN de organizador para desbloquear las opciones de administración:</p>
+          <p style="font-size: 0.8rem; color: var(--texto-tenue);">Ingresa el PIN de organizador para desbloquear las opciones de administración:</p>
           <input type="password" id="adminPinInput" placeholder="Contraseña de Administrador">
           <button class="secondary" onclick="unlockAdminPanel()">Desbloquear Panel Admin</button>
         </div>
 
         <div id="adminControlsBox" style="display: none;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <p style="font-size: 0.8rem; color: #66bb6a; font-weight: bold; margin: 0;">✔ Acceso concedido como Administrador</p>
+            <p style="font-size: 0.8rem; color: var(--ok-texto); font-weight: bold; margin: 0;">✔ Acceso concedido como Administrador</p>
             <button class="warning-btn" onclick="lockAdminPanel()" style="width: auto; padding: 4px 10px; font-size: 0.75rem; margin-top: 0;">🔒 Bloquear Panel</button>
           </div>
           
-          <label style="font-size: 0.8rem; color: #aaa;">Ajuste directo de puntos globales:</label>
+          <label style="font-size: 0.8rem; color: var(--texto-tenue);">Ajuste directo de puntos globales:</label>
           <select id="adminPlayerSelect">
             <option value="">Cargando jugadores...</option>
           </select>
@@ -490,8 +526,8 @@
 
           <!-- Zona de Riesgo / Reset Total -->
           <div class="danger-zone">
-            <h4 style="margin: 0 0 5px 0; color: #ff5252; font-size: 0.95rem;">⚠️ ZONA DE PELIGRO DE LA LIGA</h4>
-            <p style="font-size: 0.75rem; color: #aaa; margin-bottom: 10px;">Esta acción borrará TODAS las fechas, asistencias, rondas y la tabla general de standings de forma irreversible. El Catálogo de Jugadores y el Catálogo de Hazañas NO se borran.</p>
+            <h4 style="margin: 0 0 5px 0; color: var(--cerrada-texto); font-size: 0.95rem;">⚠️ ZONA DE PELIGRO DE LA LIGA</h4>
+            <p style="font-size: 0.75rem; color: var(--texto-tenue); margin-bottom: 10px;">Esta acción borrará TODAS las fechas, asistencias, rondas y la tabla general de standings de forma irreversible. El Catálogo de Jugadores y el Catálogo de Hazañas NO se borran.</p>
             <button class="danger-btn" onclick="resetTotalLiga()">💥 RESETEAR TODO A 0 (LIGA COMPLETA)</button>
           </div>
         </div>
@@ -500,16 +536,16 @@
 
     <!-- PESTAÑA 3: CATÁLOGO DE JUGADORES -->
     <div id="tab-jugadores" class="tab-content">
-      <div class="card" style="border-color: #2e7d32;">
+      <div class="card">
         <h2>✅ Agregar al Pase de Lista</h2>
-        <p style="font-size: 0.8rem; color: #aaa;">Marca a los jugadores que ya se inscribieron y pagaron para esta jornada, y agrégalos de un jalón al Pase de Lista de la fecha activa. Quedan pendientes de check-in (ausentes) hasta que lleguen al venue.</p>
-        <p id="fechaDestinoJugadoresLabel" style="font-size: 0.85rem; font-weight: bold; color: #66bb6a;">Cargando fecha activa...</p>
+        <p style="font-size: 0.8rem; color: var(--texto-tenue);">Marca a los jugadores que ya se inscribieron y pagaron para esta jornada, y agrégalos de un jalón al Pase de Lista de la fecha activa. Quedan pendientes de check-in (ausentes) hasta que lleguen al venue.</p>
+        <p id="fechaDestinoJugadoresLabel" style="font-size: 0.85rem; font-weight: bold; color: var(--ok-texto);">Cargando fecha activa...</p>
         <button class="add-btn" onclick="agregarJugadoresSeleccionadosAFecha()">➕ Agregar Seleccionados a esta Fecha</button>
       </div>
 
       <div class="card">
         <h2>👥 Catálogo de Jugadores</h2>
-        <p style="font-size: 0.8rem; color: #aaa;">Lista de jugadores conocidos de la liga. Se usa para sugerir nombres al pre-registrarse y evitar duplicados por error de tipeo. <strong>No se borra al resetear la liga a 0</strong> — es información permanente, independiente de cada temporada.</p>
+        <p style="font-size: 0.8rem; color: var(--texto-tenue);">Lista de jugadores conocidos de la liga. Se usa para sugerir nombres al pre-registrarse y evitar duplicados por error de tipeo. <strong>No se borra al resetear la liga a 0</strong> — es información permanente, independiente de cada temporada.</p>
         <ul id="catalogoJugadoresList"></ul>
         <div class="fecha-control-row">
           <input type="text" id="nuevoJugadorCatalogoInput" placeholder="Nombre de jugador" style="margin-bottom:0; flex:1;">
@@ -1037,7 +1073,7 @@
         const ids = Object.keys(data);
 
         if (ids.length === 0) {
-          ul.innerHTML = '<li style="justify-content:center;"><em style="color:#888;">Aún no hay hazañas otorgadas en esta fecha.</em></li>';
+          ul.innerHTML = '<li style="justify-content:center;"><em style="color:var(--texto-tenue);">Aún no hay hazañas otorgadas en esta fecha.</em></li>';
           return;
         }
 
@@ -1046,7 +1082,7 @@
           const h = data[id];
           const li = document.createElement('li');
           li.innerHTML = `
-            <span>🏅 <strong>${h.hazana}</strong> — ${h.jugador}${h.nota ? ' <em style="color:#aaa;">(' + h.nota + ')</em>' : ''}</span>
+            <span>🏅 <strong>${h.hazana}</strong> — ${h.jugador}${h.nota ? ' <em style="color:var(--texto-tenue);">(' + h.nota + ')</em>' : ''}</span>
             <button class="icon-btn danger" title="Eliminar" onclick="eliminarHazanaFecha('${id}')">🗑️</button>
           `;
           ul.appendChild(li);
@@ -1376,7 +1412,7 @@
         byeBox.innerHTML = '';
       } else {
         byeBox.innerHTML = '💤 Descansan esta ronda: ' + manualByePlayers.map((name, i) =>
-          `<span class="status-badge badge-bye" style="margin-right:4px;">${name} <a href="javascript:void(0)" onclick="deshacerByeManual(${i})" style="color:#fff; text-decoration:underline;">✕</a></span>`
+          `<span class="status-badge badge-bye" style="margin-right:4px;">${name} <a href="javascript:void(0)" onclick="deshacerByeManual(${i})" style="color:var(--texto-fuerte); text-decoration:underline;">✕</a></span>`
         ).join(' ');
       }
     }
@@ -1463,7 +1499,7 @@
         ul.innerHTML = '';
         const ids = Object.keys(data);
         if (ids.length === 0) {
-          ul.innerHTML = '<li style="justify-content:center;"><em style="color:#888;">Aún no hay jugadores en el catálogo.</em></li>';
+          ul.innerHTML = '<li style="justify-content:center;"><em style="color:var(--texto-tenue);">Aún no hay jugadores en el catálogo.</em></li>';
         } else {
           ids.sort((a, b) => data[a].nombre.localeCompare(data[b].nombre)).forEach(id => {
             const li = document.createElement('li');
@@ -1471,7 +1507,7 @@
               <label style="display:flex; align-items:center; gap:10px; flex:1; min-width:0; cursor:pointer; margin:0;">
                 <input type="checkbox" class="jugadorCatalogoCheckbox" value="${escapeAttr(data[id].nombre)}" style="width:auto;">
                 <span>${data[id].nombre}</span>
-                <span class="status-badge jugadorYaEnFechaBadge" data-nombre-lower="${escapeAttr(data[id].nombre.toLowerCase())}" style="display:none; background:#333; color:#ccc;">Ya en esta fecha</span>
+                <span class="status-badge badge-neutra jugadorYaEnFechaBadge" data-nombre-lower="${escapeAttr(data[id].nombre.toLowerCase())}" style="display:none;">Ya en esta fecha</span>
               </label>
               <div class="player-actions">
                 <button class="icon-btn" title="Editar" onclick="editarJugadorCatalogo('${id}', '${escapeAttr(data[id].nombre)}')">✏️</button>
@@ -1699,7 +1735,7 @@
         ul.innerHTML = '';
         const ids = Object.keys(data);
         if (ids.length === 0) {
-          ul.innerHTML = '<li style="justify-content:center;"><em style="color:#888;">Aún no hay hazañas en el catálogo.</em></li>';
+          ul.innerHTML = '<li style="justify-content:center;"><em style="color:var(--texto-tenue);">Aún no hay hazañas en el catálogo.</em></li>';
         } else {
           ids.sort((a, b) => data[a].nombre.localeCompare(data[b].nombre)).forEach(id => {
             const li = document.createElement('li');
@@ -1877,7 +1913,7 @@
             const campeones = Object.keys(jugadoresConteo).filter(j => jugadoresConteo[j] === maxVeces);
             const vecesTxt = maxVeces === 1 ? 'vez' : 'veces';
             const li = document.createElement('li');
-            li.innerHTML = `<span>🏆 <strong>${hazanaNombre}</strong> → ${campeones.join(', ')}</span> <span class="status-badge" style="background:#333; color:#ccc;">${maxVeces} ${vecesTxt}</span>`;
+            li.innerHTML = `<span>🏆 <strong>${hazanaNombre}</strong> → ${campeones.join(', ')}</span> <span class="status-badge badge-neutra">${maxVeces} ${vecesTxt}</span>`;
             ulCampeones.appendChild(li);
           });
           campeonesBox.innerHTML = '';
@@ -1901,7 +1937,7 @@
         registros.forEach(r => {
           const nombreFecha = catalogoFechasDict[r.fechaKey] ? catalogoFechasDict[r.fechaKey].nombre : r.fechaKey;
           const li = document.createElement('li');
-          li.innerHTML = `<span>🏅 <strong>${r.hazana}</strong> — ${r.jugador}${r.nota ? ' <em style="color:#aaa;">(' + r.nota + ')</em>' : ''} <span class="status-badge" style="background:#333; color:#ccc; margin-left:6px;">${nombreFecha}</span></span>`;
+          li.innerHTML = `<span>🏅 <strong>${r.hazana}</strong> — ${r.jugador}${r.nota ? ' <em style="color:var(--texto-tenue);">(' + r.nota + ')</em>' : ''} <span class="status-badge badge-neutra" style="margin-left:6px;">${nombreFecha}</span></span>`;
           ul.appendChild(li);
         });
 
